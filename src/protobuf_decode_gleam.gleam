@@ -1,6 +1,6 @@
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
-import gleam/dynamic/decode.{type DecodeError, type Decoder}
+import gleam/dynamic/decode.{type Decoder}
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/pair
@@ -27,7 +27,7 @@ pub fn test_decoder() -> Decoder(Test) {
 pub fn decode(
   from bytes: BitArray,
   using decoder: Decoder(t),
-) -> Result(t, ReadError) {
+) -> Result(t, DecodeError) {
   use data <- result.try(read_fields(bytes, []))
   decode.run(data, decoder) |> result.map_error(UnableToDecode)
 }
@@ -49,16 +49,16 @@ fn parse_wire_type(i: Int) -> Option(WireType) {
   }
 }
 
-pub type ReadError {
+pub type DecodeError {
   UnknownWireType(Int)
   InvalidVarInt(leftover_bits: BitArray, acc: BitArray)
-  UnableToDecode(List(DecodeError))
+  UnableToDecode(List(decode.DecodeError))
 }
 
 fn read_fields(
   bytes: BitArray,
   acc: List(#(Dynamic, Dynamic)),
-) -> Result(Dynamic, ReadError) {
+) -> Result(Dynamic, DecodeError) {
   case bytes {
     <<>> -> Ok(dynamic.properties(acc))
     bytes -> {
@@ -70,7 +70,7 @@ fn read_fields(
 
 fn read_field(
   bytes: BitArray,
-) -> Result(#(#(Dynamic, Dynamic), BitArray), ReadError) {
+) -> Result(#(#(Dynamic, Dynamic), BitArray), DecodeError) {
   use #(field_id_and_wire_type, bytes) <- result.try(read_varint(bytes, <<>>))
   let field_id = field_id_and_wire_type |> int.bitwise_shift_right(3)
   let wire_type = field_id_and_wire_type |> int.bitwise_and(0b111)
@@ -96,7 +96,7 @@ fn read_field(
 fn read_varint(
   bytes: BitArray,
   acc: BitArray,
-) -> Result(#(Int, BitArray), ReadError) {
+) -> Result(#(Int, BitArray), DecodeError) {
   case bytes {
     <<0:size(1), n:bits-size(7), rest:bytes>> -> {
       let acc = bit_array.concat([n, acc])
