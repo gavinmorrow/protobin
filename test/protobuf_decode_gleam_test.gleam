@@ -1,7 +1,7 @@
 import gleam/dynamic/decode.{type Decoder}
 import gleam/option
 import gleeunit
-import protobuf_decode_gleam.{decode, decode_u64, decode_uint}
+import protobuf_decode_gleam.{decode, decode_fixed, decode_uint}
 import simplifile as file
 
 pub fn main() -> Nil {
@@ -9,7 +9,7 @@ pub fn main() -> Nil {
 }
 
 type Person {
-  Person(id: Int, age: Int, score: Int, self: option.Option(Person))
+  Person(id: Int, age: Int, score: Int, self: option.Option(Person), day: Int)
 }
 
 fn person_decoder() -> Decoder(Person) {
@@ -21,13 +21,13 @@ fn person_decoder() -> Decoder(Person) {
       Ok(person) -> decode.success(person)
       Error(_) ->
         decode.failure(
-          Person(id: 0, age: 0, score: 0, self: option.None),
+          Person(id: 0, age: 0, score: 0, self: option.None, day: 0),
           "Person",
         )
     }
   }
 
-  use id <- decode.field(3, decode_u64())
+  use id <- decode.field(3, decode_fixed(64))
   use age <- decode.field(1, decode_uint())
   use score <- decode.field(2, decode_uint())
   use person <- decode.optional_field(
@@ -35,8 +35,9 @@ fn person_decoder() -> Decoder(Person) {
     option.None,
     decode.optional(person_inner_decoder),
   )
+  use day <- decode.field(5, decode_fixed(32))
 
-  decode.success(Person(id:, age:, score:, self: person))
+  decode.success(Person(id:, age:, score:, self: person, day:))
 }
 
 pub fn person_pb_test() {
@@ -53,7 +54,9 @@ pub fn person_pb_test() {
         age: 150,
         score: 81_050,
         self: option.None,
+        day: 22,
       )),
+      day: 22,
     )
 }
 

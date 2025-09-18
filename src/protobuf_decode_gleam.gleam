@@ -34,7 +34,7 @@ fn parse_wire_type(i: Int) -> Option(WireType) {
 pub type DecodeError {
   UnknownWireType(Int)
   InvalidVarInt(leftover_bits: BitArray, acc: BitArray)
-  InvalidI64(bits: BitArray)
+  InvalidFixed(size: Int, bits: BitArray)
   UnableToDecode(List(decode.DecodeError))
   InvalidLen(len: Int, value_bits: BitArray)
 }
@@ -68,9 +68,9 @@ fn read_field(
 
   let read_fn: fn(BitArray) -> ValueResult = case wire_type {
     VarInt -> read_varint
-    I64 -> read_i64
+    I64 -> read_fixed(64)
     Len -> read_len
-    I32 -> todo
+    I32 -> read_fixed(32)
   }
   use #(value, rest): #(Dynamic, BitArray) <- result.try({
     use value <- result.map(read_fn(bits))
@@ -100,10 +100,12 @@ fn read_varint_acc(bits: BitArray, acc: BitArray) -> ValueResult {
   }
 }
 
-fn read_i64(bits: BitArray) -> ValueResult {
-  case bits {
-    <<i64:bits-size(64), rest:bytes>> -> Ok(#(i64, rest))
-    bits -> Error(InvalidI64(bits:))
+fn read_fixed(size: Int) -> fn(BitArray) -> ValueResult {
+  fn(bits: BitArray) -> ValueResult {
+    case bits {
+      <<num:bits-size(size), rest:bytes>> -> Ok(#(num, rest))
+      bits -> Error(InvalidFixed(size:, bits:))
+    }
   }
 }
 
@@ -132,10 +134,10 @@ pub fn decode_uint() -> Decoder(Int) {
   bit_array_to_uint(bits) |> decode.success
 }
 
-pub fn decode_u64() -> Decoder(Int) {
+pub fn decode_fixed(size: Int) -> Decoder(Int) {
   use bits <- decode.then(decode.bit_array)
-  let assert <<u64:unsigned-little-size(64)>> = bits
-  u64 |> decode.success
+  let assert <<num:unsigned-little-size(size)>> = bits
+  num |> decode.success
 }
 
 fn bit_array_to_uint(bits: BitArray) -> Int {
