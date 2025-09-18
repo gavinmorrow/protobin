@@ -53,9 +53,11 @@ fn read_fields(
 fn read_field(
   bytes: BitArray,
 ) -> Result(#(#(Dynamic, Dynamic), BitArray), DecodeError) {
-  use #(field_id_and_wire_type, bytes) <- result.try(read_varint(bytes, <<>>))
-  let field_id = field_id_and_wire_type |> int.bitwise_shift_right(3)
-  let wire_type = field_id_and_wire_type |> int.bitwise_and(0b111)
+  use #(tag, bytes) <- result.try(read_varint(bytes, <<>>))
+  let tag = bit_array_to_uint(tag)
+
+  let field_id = tag |> int.bitwise_shift_right(3)
+  let wire_type = tag |> int.bitwise_and(0b111)
 
   use wire_type <- result.try(option.to_result(
     parse_wire_type(wire_type),
@@ -65,7 +67,7 @@ fn read_field(
     VarInt -> {
       use value <- result.map(read_varint(bytes, <<>>))
       use value <- pair.map_first(value)
-      dynamic.int(value)
+      dynamic.bit_array(value)
     }
     I64 -> todo
     Len -> todo
@@ -78,12 +80,11 @@ fn read_field(
 fn read_varint(
   bytes: BitArray,
   acc: BitArray,
-) -> Result(#(Int, BitArray), DecodeError) {
+) -> Result(#(BitArray, BitArray), DecodeError) {
   case bytes {
     <<0:size(1), n:bits-size(7), rest:bytes>> -> {
       let acc = bit_array.concat([n, acc])
-      let n = bit_array_to_int(acc)
-      Ok(#(n, rest))
+      Ok(#(acc, rest))
     }
     <<1:size(1), n:bits-size(7), rest:bytes>> ->
       read_varint(rest, bit_array.concat([n, acc]))
@@ -91,7 +92,7 @@ fn read_varint(
   }
 }
 
-fn bit_array_to_int(bits: BitArray) -> Int {
+pub fn bit_array_to_uint(bits: BitArray) -> Int {
   let size = bit_array.bit_size(bits)
   // Interpert the entire bit array as an unsigned int
   let assert <<n:unsigned-big-size(size)>> = bits

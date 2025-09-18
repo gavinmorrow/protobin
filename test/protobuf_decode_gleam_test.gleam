@@ -1,6 +1,6 @@
 import gleam/dynamic/decode.{type Decoder}
 import gleeunit
-import protobuf_decode_gleam.{decode}
+import protobuf_decode_gleam.{bit_array_to_uint, decode}
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -11,8 +11,12 @@ pub type TwoInts {
 }
 
 pub fn two_ints_decoder() -> Decoder(TwoInts) {
-  use id <- decode.field(1, decode.int)
-  use age <- decode.field(2, decode.int)
+  use id <- decode.field(1, decode.bit_array)
+  let id = bit_array_to_uint(id)
+
+  use age <- decode.field(2, decode.bit_array)
+  let age = bit_array_to_uint(age)
+
   decode.success(Test(id:, age:))
 }
 
