@@ -37,7 +37,7 @@ fn two_ints_decoder() -> Decoder(TwoInts) {
 }
 
 pub fn two_ints_test() {
-  let bytes = <<
+  let bits = <<
     // field 1
     0x08,
     0x96,
@@ -49,6 +49,6 @@ pub fn two_ints_test() {
     0x04,
   >>
 
-  let assert Ok(data) = decode(from: bytes, using: two_ints_decoder())
+  let assert Ok(data) = decode(from: bits, using: two_ints_decoder())
   assert data == Test(id: 150, age: 80_150)
 }

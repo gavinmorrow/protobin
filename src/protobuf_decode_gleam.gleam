@@ -7,10 +7,10 @@ import gleam/pair
 import gleam/result
 
 pub fn decode(
-  from bytes: BitArray,
+  from bits: BitArray,
   using decoder: Decoder(t),
 ) -> Result(t, DecodeError) {
-  use data <- result.try(read_fields(bytes, []))
+  use data <- result.try(read_fields(bits, []))
   decode.run(data, decoder) |> result.map_error(UnableToDecode)
 }
 
@@ -34,27 +34,27 @@ fn parse_wire_type(i: Int) -> Option(WireType) {
 pub type DecodeError {
   UnknownWireType(Int)
   InvalidVarInt(leftover_bits: BitArray, acc: BitArray)
-  InvalidI64(bytes: BitArray)
+  InvalidI64(bits: BitArray)
   UnableToDecode(List(decode.DecodeError))
 }
 
 fn read_fields(
-  bytes: BitArray,
+  bits: BitArray,
   acc: List(#(Dynamic, Dynamic)),
 ) -> Result(Dynamic, DecodeError) {
-  case bytes {
+  case bits {
     <<>> -> Ok(dynamic.properties(acc))
-    bytes -> {
-      use #(prop, bytes) <- result.try(read_field(bytes))
-      read_fields(bytes, [prop, ..acc])
+    bits -> {
+      use #(prop, bits) <- result.try(read_field(bits))
+      read_fields(bits, [prop, ..acc])
     }
   }
 }
 
 fn read_field(
-  bytes: BitArray,
+  bits: BitArray,
 ) -> Result(#(#(Dynamic, Dynamic), BitArray), DecodeError) {
-  use #(tag, bytes) <- result.try(read_varint(bytes))
+  use #(tag, bits) <- result.try(read_varint(bits))
   let tag = bit_array_to_uint(tag)
 
   let field_id = tag |> int.bitwise_shift_right(3)
@@ -71,24 +71,24 @@ fn read_field(
     Len -> todo
     I32 -> todo
   }
-  use #(value, bytes): #(Dynamic, BitArray) <- result.try({
-    use value <- result.map(read_fn(bytes))
+  use #(value, bits): #(Dynamic, BitArray) <- result.try({
+    use value <- result.map(read_fn(bits))
     use value <- pair.map_first(value)
     dynamic.bit_array(value)
   })
 
-  Ok(#(#(dynamic.int(field_id), value), bytes))
+  Ok(#(#(dynamic.int(field_id), value), bits))
 }
 
 type ValueResult =
   Result(#(BitArray, BitArray), DecodeError)
 
-fn read_varint(bytes: BitArray) -> ValueResult {
-  read_varint_acc(bytes, <<>>)
+fn read_varint(bits: BitArray) -> ValueResult {
+  read_varint_acc(bits, <<>>)
 }
 
-fn read_varint_acc(bytes: BitArray, acc: BitArray) -> ValueResult {
-  case bytes {
+fn read_varint_acc(bits: BitArray, acc: BitArray) -> ValueResult {
+  case bits {
     <<0:size(1), n:bits-size(7), rest:bytes>> -> {
       let acc = bit_array.concat([n, acc])
       Ok(#(acc, rest))
@@ -99,10 +99,10 @@ fn read_varint_acc(bytes: BitArray, acc: BitArray) -> ValueResult {
   }
 }
 
-fn read_i64(bytes: BitArray) -> ValueResult {
-  case bytes {
+fn read_i64(bits: BitArray) -> ValueResult {
+  case bits {
     <<i64:bits-size(64), rest:bytes>> -> Ok(#(i64, rest))
-    bytes -> Error(InvalidI64(bytes:))
+    bits -> Error(InvalidI64(bits:))
   }
 }
 
