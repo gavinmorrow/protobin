@@ -20,14 +20,14 @@ pub fn two_ints_decoder() -> Decoder(TwoInts) {
 pub fn two_ints_test() {
   let bytes = <<
     // field 1
-    0x08:little,
-    0x96:little,
-    0x01:little,
+    0x08,
+    0x96,
+    0x01,
     // field 2
-    0x10:little,
-    0x96:little,
-    0xf2:little,
-    0x04:little,
+    0x10,
+    0x96,
+    0xf2,
+    0x04,
   >>
 
   let assert Ok(data) = decode(from: bytes, using: two_ints_decoder())
