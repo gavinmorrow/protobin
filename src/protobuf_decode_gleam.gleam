@@ -92,7 +92,12 @@ fn read_varint(
   }
 }
 
-pub fn bit_array_to_uint(bits: BitArray) -> Int {
+pub fn decode_uint() -> Decoder(Int) {
+  use bits <- decode.then(decode.bit_array)
+  bit_array_to_uint(bits) |> decode.success
+}
+
+fn bit_array_to_uint(bits: BitArray) -> Int {
   let size = bit_array.bit_size(bits)
   // Interpert the entire bit array as an unsigned int
   let assert <<n:unsigned-big-size(size)>> = bits
