@@ -71,13 +71,13 @@ fn read_field(
     Len -> todo
     I32 -> todo
   }
-  use #(value, bits): #(Dynamic, BitArray) <- result.try({
+  use #(value, rest): #(Dynamic, BitArray) <- result.try({
     use value <- result.map(read_fn(bits))
     use value <- pair.map_first(value)
     dynamic.bit_array(value)
   })
 
-  Ok(#(#(dynamic.int(field_id), value), bits))
+  Ok(#(#(dynamic.int(field_id), value), rest))
 }
 
 type ValueResult =
