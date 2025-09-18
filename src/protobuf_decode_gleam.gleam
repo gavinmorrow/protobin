@@ -111,6 +111,12 @@ pub fn decode_uint() -> Decoder(Int) {
   bit_array_to_uint(bits) |> decode.success
 }
 
+pub fn decode_u64() -> Decoder(Int) {
+  use bits <- decode.then(decode.bit_array)
+  let assert <<u64:unsigned-little-size(64)>> = bits
+  u64 |> decode.success
+}
+
 fn bit_array_to_uint(bits: BitArray) -> Int {
   let size = bit_array.bit_size(bits)
   // Interpert the entire bit array as an unsigned int
