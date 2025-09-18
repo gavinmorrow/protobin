@@ -34,6 +34,7 @@ fn parse_wire_type(i: Int) -> Option(WireType) {
 pub type DecodeError {
   UnknownWireType(Int)
   InvalidVarInt(leftover_bits: BitArray, acc: BitArray)
+  InvalidI64(bytes: BitArray)
   UnableToDecode(List(decode.DecodeError))
 }
 
@@ -53,7 +54,7 @@ fn read_fields(
 fn read_field(
   bytes: BitArray,
 ) -> Result(#(#(Dynamic, Dynamic), BitArray), DecodeError) {
-  use #(tag, bytes) <- result.try(read_varint(bytes, <<>>))
+  use #(tag, bytes) <- result.try(read_varint(bytes))
   let tag = bit_array_to_uint(tag)
 
   let field_id = tag |> int.bitwise_shift_right(3)
@@ -63,32 +64,45 @@ fn read_field(
     parse_wire_type(wire_type),
     UnknownWireType(wire_type),
   ))
-  use #(value, bytes): #(Dynamic, BitArray) <- result.try(case wire_type {
-    VarInt -> {
-      use value <- result.map(read_varint(bytes, <<>>))
-      use value <- pair.map_first(value)
-      dynamic.bit_array(value)
-    }
-    I64 -> todo
+
+  let read_fn: fn(BitArray) -> ValueResult = case wire_type {
+    VarInt -> read_varint
+    I64 -> read_i64
     Len -> todo
     I32 -> todo
+  }
+  use #(value, bytes): #(Dynamic, BitArray) <- result.try({
+    use value <- result.map(read_fn(bytes))
+    use value <- pair.map_first(value)
+    dynamic.bit_array(value)
   })
 
   Ok(#(#(dynamic.int(field_id), value), bytes))
 }
 
-fn read_varint(
-  bytes: BitArray,
-  acc: BitArray,
-) -> Result(#(BitArray, BitArray), DecodeError) {
+type ValueResult =
+  Result(#(BitArray, BitArray), DecodeError)
+
+fn read_varint(bytes: BitArray) -> ValueResult {
+  read_varint_acc(bytes, <<>>)
+}
+
+fn read_varint_acc(bytes: BitArray, acc: BitArray) -> ValueResult {
   case bytes {
     <<0:size(1), n:bits-size(7), rest:bytes>> -> {
       let acc = bit_array.concat([n, acc])
       Ok(#(acc, rest))
     }
     <<1:size(1), n:bits-size(7), rest:bytes>> ->
-      read_varint(rest, bit_array.concat([n, acc]))
+      read_varint_acc(rest, bit_array.concat([n, acc]))
     bits -> Error(InvalidVarInt(leftover_bits: bits, acc:))
+  }
+}
+
+fn read_i64(bytes: BitArray) -> ValueResult {
+  case bytes {
+    <<i64:bits-size(64), rest:bytes>> -> Ok(#(i64, rest))
+    bytes -> Error(InvalidI64(bytes:))
   }
 }
 
