@@ -13,14 +13,29 @@ type Person {
 }
 
 fn person_decoder() -> Decoder(Person) {
+  let person_inner_decoder = {
+    use bits <- decode.then(decode.bit_array)
+
+    let person = decode(from: bits, using: person_decoder())
+    case person {
+      Ok(person) -> decode.success(person)
+      Error(_) ->
+        decode.failure(
+          Person(id: 0, age: 0, score: 0, self: option.None),
+          "Person",
+        )
+    }
+  }
+
   use id <- decode.field(3, decode_u64())
   use age <- decode.field(1, decode_uint())
   use score <- decode.field(2, decode_uint())
   use person <- decode.optional_field(
     4,
     option.None,
-    person_decoder() |> decode.map(option.Some),
+    decode.optional(person_inner_decoder),
   )
+
   decode.success(Person(id:, age:, score:, self: person))
 }
 

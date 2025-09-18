@@ -36,6 +36,7 @@ pub type DecodeError {
   InvalidVarInt(leftover_bits: BitArray, acc: BitArray)
   InvalidI64(bits: BitArray)
   UnableToDecode(List(decode.DecodeError))
+  InvalidLen(len: Int, value_bits: BitArray)
 }
 
 fn read_fields(
@@ -68,7 +69,7 @@ fn read_field(
   let read_fn: fn(BitArray) -> ValueResult = case wire_type {
     VarInt -> read_varint
     I64 -> read_i64
-    Len -> todo
+    Len -> read_len
     I32 -> todo
   }
   use #(value, rest): #(Dynamic, BitArray) <- result.try({
@@ -104,6 +105,26 @@ fn read_i64(bits: BitArray) -> ValueResult {
     <<i64:bits-size(64), rest:bytes>> -> Ok(#(i64, rest))
     bits -> Error(InvalidI64(bits:))
   }
+}
+
+fn read_len(bits: BitArray) -> ValueResult {
+  // First, read the length of the value
+  // It is encoded as a varint immediately after the tag
+  use #(len, bits) <- result.try(read_varint(bits))
+  let len = bit_array_to_uint(len)
+
+  // Just decoded a uint, so should be safe
+  assert len > 0
+
+  use value <- result.try(
+    bit_array.slice(from: bits, at: 0, take: len)
+    |> result.map_error(fn(_) { InvalidLen(len:, value_bits: bits) }),
+  )
+  // Assert b/c if the len was too long, it would've errored in the prev slice
+  let assert Ok(rest) =
+    bit_array.slice(from: bits, at: len, take: bit_array.byte_size(bits) - len)
+
+  Ok(#(value, rest))
 }
 
 pub fn decode_uint() -> Decoder(Int) {
