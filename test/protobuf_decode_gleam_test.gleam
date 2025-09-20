@@ -1,7 +1,9 @@
 import gleam/dynamic/decode.{type Decoder}
 import gleam/option
 import gleeunit
-import protobuf_decode_gleam.{decode, decode_fixed, decode_uint}
+import protobuf_decode_gleam.{
+  decode, decode_fixed, decode_string, decode_uint, decoder,
+}
 import simplifile as file
 
 pub fn main() -> Nil {
@@ -12,20 +14,17 @@ type Person {
   Person(id: Int, age: Int, score: Int, self: option.Option(Person), day: Int)
 }
 
-fn person_decoder() -> Decoder(Person) {
-  let person_inner_decoder = {
-    use bits <- decode.then(decode.bit_array)
+const default_person = Person(
+  id: 0,
+  age: 0,
+  score: 0,
+  self: option.None,
+  day: 0,
+)
 
-    let person = decode(from: bits, using: person_decoder())
-    case person {
-      Ok(person) -> decode.success(person)
-      Error(_) ->
-        decode.failure(
-          Person(id: 0, age: 0, score: 0, self: option.None, day: 0),
-          "Person",
-        )
-    }
-  }
+fn person_decoder() -> Decoder(Person) {
+  let person_inner_decoder =
+    decoder(using: person_decoder, named: "Person", default: default_person)
 
   use id <- decode.field(3, decode_fixed(64))
   use age <- decode.field(1, decode_uint())

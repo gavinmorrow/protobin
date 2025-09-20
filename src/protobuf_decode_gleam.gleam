@@ -14,6 +14,20 @@ pub fn decode(
   decode.run(data, decoder) |> result.map_error(UnableToDecode)
 }
 
+pub fn decoder(
+  using decoder: fn() -> Decoder(t),
+  named name: String,
+  default default: t,
+) -> Decoder(t) {
+  use bits <- decode.then(decode.bit_array)
+
+  let value = decode(from: bits, using: decoder())
+  case value {
+    Ok(value) -> decode.success(value)
+    Error(_) -> decode.failure(default, name)
+  }
+}
+
 type WireType {
   VarInt
   I64
