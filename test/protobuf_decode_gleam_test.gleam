@@ -86,3 +86,40 @@ pub fn two_ints_test() {
   let assert Ok(data) = decode(from: bits, using: two_ints_decoder())
   assert data == Test(id: 150, age: 80_150)
 }
+
+type Gtfs {
+  Gtfs(header: FeedHeader)
+}
+
+fn gtfs_decoder() -> Decoder(Gtfs) {
+  use header <- decode.field(
+    1,
+    decoder(
+      using: feed_header_decoder,
+      named: "FeedHeader",
+      default: feed_header_default,
+    ),
+  )
+  decode.success(Gtfs(header:))
+}
+
+type FeedHeader {
+  FeedHeader(version: String)
+}
+
+const feed_header_default = FeedHeader(version: "0.0")
+
+fn feed_header_decoder() -> Decoder(FeedHeader) {
+  use version <- decode.field(1, decode_string())
+  decode.success(FeedHeader(version:))
+}
+
+pub fn gtfs_test() {
+  let path = "./test/gtfs-short.pb"
+  let assert Ok(bits) = file.read_bits(from: path)
+  let assert Ok(gtfs) = decode(from: bits, using: gtfs_decoder())
+
+  echo gtfs
+
+  Nil
+}
