@@ -140,6 +140,16 @@ pub fn decode_fixed(size: Int) -> Decoder(Int) {
   num |> decode.success
 }
 
+pub fn decode_string() -> Decoder(String) {
+  use bits <- decode.then(decode.bit_array)
+
+  let str = bit_array.to_string(bits)
+  case str {
+    Ok(str) -> decode.success(str)
+    Error(_) -> decode.failure("", "String")
+  }
+}
+
 fn bit_array_to_uint(bits: BitArray) -> Int {
   let size = bit_array.bit_size(bits)
   // Interpert the entire bit array as an unsigned int
