@@ -2,7 +2,7 @@ import gleam/dynamic/decode.{type Decoder}
 import gleam/option
 import gleeunit
 import protobuf_decode_gleam.{
-  decode, decode_fixed, decode_string, decode_uint, decoder,
+  decode_fixed, decode_protobuf, decode_string, decode_uint, parse,
 }
 import simplifile as file
 
@@ -24,7 +24,11 @@ const default_person = Person(
 
 fn person_decoder() -> Decoder(Person) {
   let person_inner_decoder =
-    decoder(using: person_decoder, named: "Person", default: default_person)
+    decode_protobuf(
+      using: person_decoder,
+      named: "Person",
+      default: default_person,
+    )
 
   use id <- decode.field(3, decode_fixed(64))
   use age <- decode.field(1, decode_uint())
@@ -42,7 +46,7 @@ fn person_decoder() -> Decoder(Person) {
 pub fn person_pb_test() {
   let path = "./test/person.pb"
   let assert Ok(bits) = file.read_bits(from: path)
-  let assert Ok(person) = decode(from: bits, using: person_decoder())
+  let assert Ok(person) = parse(from: bits, using: person_decoder())
   assert person
     == Person(
       id: 42,
@@ -83,7 +87,7 @@ pub fn two_ints_test() {
     0x04,
   >>
 
-  let assert Ok(data) = decode(from: bits, using: two_ints_decoder())
+  let assert Ok(data) = parse(from: bits, using: two_ints_decoder())
   assert data == Test(id: 150, age: 80_150)
 }
 
@@ -94,7 +98,7 @@ type Gtfs {
 fn gtfs_decoder() -> Decoder(Gtfs) {
   use header <- decode.field(
     1,
-    decoder(
+    decode_protobuf(
       using: feed_header_decoder,
       named: "FeedHeader",
       default: feed_header_default,
@@ -117,7 +121,7 @@ fn feed_header_decoder() -> Decoder(FeedHeader) {
 pub fn gtfs_test() {
   let path = "./test/gtfs-short.pb"
   let assert Ok(bits) = file.read_bits(from: path)
-  let assert Ok(gtfs) = decode(from: bits, using: gtfs_decoder())
+  let assert Ok(gtfs) = parse(from: bits, using: gtfs_decoder())
 
   echo gtfs
 
