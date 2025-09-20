@@ -12,12 +12,12 @@ import internal/wire_type.{type WireType}
 pub fn parse(
   from bits: BitArray,
   using decoder: Decoder(t),
-) -> Result(t, DecodeError) {
+) -> Result(t, ParseError) {
   use data <- result.try(read_fields(bits, []))
   decode.run(data, decoder) |> result.map_error(UnableToDecode)
 }
 
-pub type DecodeError {
+pub type ParseError {
   UnknownWireType(Int)
   InvalidVarInt(leftover_bits: BitArray, acc: BitArray)
   InvalidFixed(size: Int, bits: BitArray)
@@ -25,7 +25,7 @@ pub type DecodeError {
   UnableToDecode(List(decode.DecodeError))
 }
 
-fn read_fields(bits: BitArray, acc: List(Field)) -> Result(Dynamic, DecodeError) {
+fn read_fields(bits: BitArray, acc: List(Field)) -> Result(Dynamic, ParseError) {
   case bits {
     <<>> ->
       acc
@@ -40,7 +40,7 @@ fn read_fields(bits: BitArray, acc: List(Field)) -> Result(Dynamic, DecodeError)
 }
 
 type DecodeResult(t) =
-  Result(t, DecodeError)
+  Result(t, ParseError)
 
 type Parsed(t) {
   Parsed(value: t, rest: BitArray)
