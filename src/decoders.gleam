@@ -4,7 +4,7 @@ import gleam/dynamic/decode.{type Decoder}
 import internal/util
 import protobuf_decode_gleam.{parse}
 
-pub fn decode_protobuf(
+pub fn protobuf(
   using decoder: fn() -> Decoder(t),
   named name: String,
   default default: t,
@@ -18,18 +18,18 @@ pub fn decode_protobuf(
   }
 }
 
-pub fn decode_uint() -> Decoder(Int) {
+pub fn uint() -> Decoder(Int) {
   use bits <- decode.then(decode.bit_array)
   util.bit_array_to_uint(bits) |> decode.success
 }
 
-pub fn decode_fixed(size: Int) -> Decoder(Int) {
+pub fn fixed(size: Int) -> Decoder(Int) {
   use bits <- decode.then(decode.bit_array)
   let assert <<num:unsigned-little-size(size)>> = bits
   num |> decode.success
 }
 
-pub fn decode_string() -> Decoder(String) {
+pub fn string() -> Decoder(String) {
   use bits <- decode.then(decode.bit_array)
 
   let str = bit_array.to_string(bits)

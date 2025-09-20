@@ -3,7 +3,7 @@ import gleam/option
 import gleeunit
 import simplifile as file
 
-import decoders.{decode_fixed, decode_protobuf, decode_string, decode_uint}
+import decoders
 import protobuf_decode_gleam.{parse}
 
 pub fn main() -> Nil {
@@ -24,21 +24,21 @@ const default_person = Person(
 
 fn person_decoder() -> Decoder(Person) {
   let person_inner_decoder =
-    decode_protobuf(
+    decoders.protobuf(
       using: person_decoder,
       named: "Person",
       default: default_person,
     )
 
-  use id <- decode.field(3, decode_fixed(64))
-  use age <- decode.field(1, decode_uint())
-  use score <- decode.field(2, decode_uint())
+  use id <- decode.field(3, decoders.fixed(64))
+  use age <- decode.field(1, decoders.uint())
+  use score <- decode.field(2, decoders.uint())
   use person <- decode.optional_field(
     4,
     option.None,
     decode.optional(person_inner_decoder),
   )
-  use day <- decode.field(5, decode_fixed(32))
+  use day <- decode.field(5, decoders.fixed(32))
 
   decode.success(Person(id:, age:, score:, self: person, day:))
 }
@@ -68,8 +68,8 @@ type TwoInts {
 }
 
 fn two_ints_decoder() -> Decoder(TwoInts) {
-  use id <- decode.field(1, decode_uint())
-  use age <- decode.field(2, decode_uint())
+  use id <- decode.field(1, decoders.uint())
+  use age <- decode.field(2, decoders.uint())
 
   decode.success(Test(id:, age:))
 }
@@ -98,7 +98,7 @@ type Gtfs {
 fn gtfs_decoder() -> Decoder(Gtfs) {
   use header <- decode.field(
     1,
-    decode_protobuf(
+    decoders.protobuf(
       using: feed_header_decoder,
       named: "FeedHeader",
       default: feed_header_default,
