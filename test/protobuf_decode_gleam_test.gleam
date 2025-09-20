@@ -1,10 +1,10 @@
 import gleam/dynamic/decode.{type Decoder}
 import gleam/option
 import gleeunit
-import protobuf_decode_gleam.{
-  decode_fixed, decode_protobuf, decode_string, decode_uint, parse,
-}
 import simplifile as file
+
+import decoders.{decode_fixed, decode_protobuf, decode_string, decode_uint}
+import protobuf_decode_gleam.{parse}
 
 pub fn main() -> Nil {
   gleeunit.main()

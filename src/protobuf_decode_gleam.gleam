@@ -6,6 +6,7 @@ import gleam/list
 import gleam/option
 import gleam/result
 
+import internal/util
 import internal/wire_type.{type WireType}
 
 pub fn parse(
@@ -14,20 +15,6 @@ pub fn parse(
 ) -> Result(t, DecodeError) {
   use data <- result.try(read_fields(bits, []))
   decode.run(data, decoder) |> result.map_error(UnableToDecode)
-}
-
-pub fn decode_protobuf(
-  using decoder: fn() -> Decoder(t),
-  named name: String,
-  default default: t,
-) -> Decoder(t) {
-  use bits <- decode.then(decode.bit_array)
-
-  let value = parse(from: bits, using: decoder())
-  case value {
-    Ok(value) -> decode.success(value)
-    Error(_) -> decode.failure(default, name)
-  }
 }
 
 pub type DecodeError {
@@ -83,7 +70,7 @@ fn wire_type_read_fn(ty: WireType) -> fn(BitArray) -> ValueResult {
 
 fn read_field(bits: BitArray) -> DecodeResult(Parsed(Field)) {
   use Parsed(value: tag, rest: bits) <- result.try(read_varint(bits))
-  let tag = bit_array_to_uint(tag)
+  let tag = util.bit_array_to_uint(tag)
 
   let field_id = tag |> int.bitwise_shift_right(3)
   let wire_type = tag |> int.bitwise_and(0b111)
@@ -137,7 +124,7 @@ fn read_len(bits: BitArray) -> ValueResult {
   // First, read the length of the value
   // It is encoded as a varint immediately after the tag
   use Parsed(value: len, rest: bits) <- result.try(read_varint(bits))
-  let len = bit_array_to_uint(len)
+  let len = util.bit_array_to_uint(len)
 
   // Just decoded a uint, so should be safe
   assert len > 0
@@ -151,32 +138,4 @@ fn read_len(bits: BitArray) -> ValueResult {
     bit_array.slice(from: bits, at: len, take: bit_array.byte_size(bits) - len)
 
   Ok(Parsed(value:, rest:))
-}
-
-pub fn decode_uint() -> Decoder(Int) {
-  use bits <- decode.then(decode.bit_array)
-  bit_array_to_uint(bits) |> decode.success
-}
-
-pub fn decode_fixed(size: Int) -> Decoder(Int) {
-  use bits <- decode.then(decode.bit_array)
-  let assert <<num:unsigned-little-size(size)>> = bits
-  num |> decode.success
-}
-
-pub fn decode_string() -> Decoder(String) {
-  use bits <- decode.then(decode.bit_array)
-
-  let str = bit_array.to_string(bits)
-  case str {
-    Ok(str) -> decode.success(str)
-    Error(_) -> decode.failure("", "String")
-  }
-}
-
-fn bit_array_to_uint(bits: BitArray) -> Int {
-  let size = bit_array.bit_size(bits)
-  // Interpert the entire bit array as an unsigned int
-  let assert <<n:unsigned-big-size(size)>> = bits
-  n
 }
