@@ -3,8 +3,10 @@ import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode.{type Decoder}
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option
 import gleam/result
+
+import internal/wire_type.{type WireType}
 
 pub fn parse(
   from bits: BitArray,
@@ -25,32 +27,6 @@ pub fn decode_protobuf(
   case value {
     Ok(value) -> decode.success(value)
     Error(_) -> decode.failure(default, name)
-  }
-}
-
-type WireType {
-  VarInt
-  I64
-  Len
-  I32
-}
-
-fn parse_wire_type(i: Int) -> Option(WireType) {
-  case i {
-    0 -> Some(VarInt)
-    1 -> Some(I64)
-    2 -> Some(Len)
-    5 -> Some(I32)
-    _ -> None
-  }
-}
-
-fn wire_type_read_fn(ty: WireType) -> fn(BitArray) -> ValueResult {
-  case ty {
-    VarInt -> read_varint
-    I64 -> read_fixed(64)
-    Len -> read_len
-    I32 -> read_fixed(32)
   }
 }
 
@@ -96,6 +72,15 @@ fn field_as_pair(field: Field) {
   #(field.key, field.value)
 }
 
+fn wire_type_read_fn(ty: WireType) -> fn(BitArray) -> ValueResult {
+  case ty {
+    wire_type.VarInt -> read_varint
+    wire_type.I64 -> read_fixed(64)
+    wire_type.Len -> read_len
+    wire_type.I32 -> read_fixed(32)
+  }
+}
+
 fn read_field(bits: BitArray) -> DecodeResult(Parsed(Field)) {
   use Parsed(value: tag, rest: bits) <- result.try(read_varint(bits))
   let tag = bit_array_to_uint(tag)
@@ -104,7 +89,7 @@ fn read_field(bits: BitArray) -> DecodeResult(Parsed(Field)) {
   let wire_type = tag |> int.bitwise_and(0b111)
 
   use wire_type <- result.try(option.to_result(
-    parse_wire_type(wire_type),
+    wire_type.parse(wire_type),
     UnknownWireType(wire_type),
   ))
 
