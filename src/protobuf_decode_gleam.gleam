@@ -1,4 +1,5 @@
 import gleam/bit_array
+import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode.{type Decoder}
 import gleam/int
@@ -29,13 +30,42 @@ fn read_fields(bits: BitArray, acc: List(Field)) -> Result(Dynamic, ParseError) 
   case bits {
     <<>> ->
       acc
-      |> list.map(field_as_pair)
+      |> repeated_to_list
+      |> dict.to_list
       |> dynamic.properties
       |> Ok
     bits -> {
       use Parsed(value: prop, rest: bits) <- result.try(read_field(bits))
       read_fields(bits, [prop, ..acc])
     }
+  }
+}
+
+fn repeated_to_list(fields: List(Field)) -> dict.Dict(Dynamic, Dynamic) {
+  let fields = {
+    use fields, Field(key:, value:) <- list.fold(over: fields, from: dict.new())
+
+    let value = case dict.get(fields, key) {
+      Ok(existing_value) -> {
+        // If the existing value is already a list, append to it
+        // Otherwise, turn it into a list
+        case decode.run(existing_value, decode.list(of: decode.dynamic)) {
+          // NOTE: this puts the values in reverse order
+          Ok(existing_values) -> [value, ..existing_values] |> dynamic.list
+          Error(_) -> [value, existing_value] |> dynamic.list
+        }
+      }
+      // If there is no existing value, don't change the value
+      Error(Nil) -> value
+    }
+    dict.insert(into: fields, for: key, insert: value)
+  }
+
+  // The repeated values must be in order, so un-reverse them here
+  use _key, field <- dict.map_values(in: fields)
+  case decode.run(field, decode.list(of: decode.dynamic)) {
+    Ok(values) -> list.reverse(values) |> dynamic.list
+    Error(_) -> field
   }
 }
 
@@ -53,10 +83,6 @@ fn parsed_map(of parsed: Parsed(t), with fun: fn(t) -> u) -> Parsed(u) {
 
 type Field {
   Field(key: Dynamic, value: Dynamic)
-}
-
-fn field_as_pair(field: Field) {
-  #(field.key, field.value)
 }
 
 fn wire_type_read_fn(ty: WireType) -> fn(BitArray) -> ValueResult {
