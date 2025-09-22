@@ -40,7 +40,7 @@ fn person_decoder() -> Decoder(Person) {
   )
   use day <- decode.field(5, decoders.fixed(32))
 
-  decode.success(Person(id:, age:, score:, self: person, day:))
+  Person(id:, age:, score:, self: person, day:) |> decode.success
 }
 
 pub fn person_pb_test() {
@@ -74,7 +74,7 @@ fn two_ints_decoder() -> Decoder(TwoInts) {
   use id <- decode.field(1, decoders.uint())
   use age <- decode.field(2, decoders.uint())
 
-  decode.success(Test(id:, age:))
+  Test(id:, age:) |> decode.success
 }
 
 pub fn two_ints_test() {
@@ -95,39 +95,97 @@ pub fn two_ints_test() {
   assert data == Test(id: 150, age: 80_150)
 }
 
-type Gtfs {
-  Gtfs(header: FeedHeader)
+pub type FeedHeader {
+  FeedHeader(gtfs_realtime_version: String, timestamp: Int, nyct: NyctHeader)
 }
 
-fn gtfs_decoder() -> Decoder(Gtfs) {
-  use header <- decode.field(
-    1,
-    decoders.protobuf(
-      using: feed_header_decoder,
-      named: "FeedHeader",
-      default: feed_header_default,
-    ),
+pub type NyctHeader {
+  NyctHeader(
+    version: String,
+    trip_replacement_periods: List(TripReplacementPeriod),
   )
-  decode.success(Gtfs(header:))
 }
 
-type FeedHeader {
-  FeedHeader(version: String)
+pub type TripReplacementPeriod {
+  TripReplacementPeriod(route_id: String, replacement_period: Int)
 }
 
-const feed_header_default = FeedHeader(version: "0.0")
+const nyct_header_default = NyctHeader(
+  version: "1.0",
+  trip_replacement_periods: [],
+)
+
+const trip_replacement_period_default = TripReplacementPeriod(
+  route_id: "",
+  replacement_period: 0,
+)
 
 fn feed_header_decoder() -> Decoder(FeedHeader) {
-  use version <- decode.field(1, decode_string())
-  decode.success(FeedHeader(version:))
+  use gtfs_realtime_version <- decode.field(1, decoders.string())
+  use timestamp <- decode.field(3, decoders.fixed(64))
+  use nyct <- decode.field(
+    1001,
+    decoders.protobuf(
+      using: nyct_header_decoder,
+      named: "NyctHeader",
+      default: nyct_header_default,
+    ),
+  )
+  FeedHeader(gtfs_realtime_version:, timestamp:, nyct:) |> decode.success
+}
+
+fn nyct_header_decoder() -> Decoder(NyctHeader) {
+  use version <- decode.field(1, decoders.string())
+
+  use trip_replacement_periods <- decode.field(
+    2,
+    decode.list(of: decoders.protobuf(
+      using: trip_replacement_period_decoder,
+      named: "TripReplacementPeriod",
+      default: trip_replacement_period_default,
+    )),
+  )
+
+  NyctHeader(version:, trip_replacement_periods:) |> decode.success
+}
+
+fn trip_replacement_period_decoder() -> Decoder(TripReplacementPeriod) {
+  use route_id <- decode.field(1, decoders.string())
+  use replacement_period <- decode.field(
+    2,
+    decoders.protobuf(
+      using: trip_replacement_period_time_range_decoder,
+      named: "TripReplacePeriod.TimeRange",
+      default: 0,
+    ),
+  )
+  TripReplacementPeriod(route_id:, replacement_period:) |> decode.success
+}
+
+fn trip_replacement_period_time_range_decoder() -> Decoder(Int) {
+  use time <- decode.field(2, decoders.fixed(64))
+  time |> decode.success
 }
 
 pub fn gtfs_test() {
   let path = "./test/gtfs-short.pb"
   let assert Ok(bits) = file.read_bits(from: path)
-  let assert Ok(gtfs) = parse(from: bits, using: gtfs_decoder())
+  let assert Ok(header) = parse(from: bits, using: feed_header_decoder())
 
-  echo gtfs
-
-  Nil
+  assert header
+    == Parsed(
+      FeedHeader(
+        "1.0",
+        1_758_224_061,
+        NyctHeader("1.0", [
+          TripReplacementPeriod("7", 1_758_224_061),
+          TripReplacementPeriod("6", 1_758_224_061),
+          TripReplacementPeriod("5", 1_758_224_061),
+          TripReplacementPeriod("2", 1_758_224_061),
+          TripReplacementPeriod("1", 1_758_224_061),
+        ]),
+      ),
+      <<>>,
+      102,
+    )
 }
