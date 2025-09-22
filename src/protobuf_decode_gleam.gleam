@@ -50,30 +50,24 @@ fn read_fields(
 
 fn repeated_to_list(fields: List(Field)) -> dict.Dict(Dynamic, Dynamic) {
   let fields = {
-    use fields, Field(key:, value:) <- list.fold(over: fields, from: dict.new())
+    // Every field is a list of values for two reasons:
+    // a) expanded repeated values are encoded as repeated fields
+    // b) if a non-repeating field is defined twice, then the last value should
+    //    be considered the correct one. since the parser doesn't know which
+    //    fields are repeating, it parses all fields as a list and then the
+    //    decoders will handle choosing which value(s) to keep.
+    let acc: dict.Dict(Dynamic, List(Dynamic)) = dict.new()
+    use fields, Field(key:, value:) <- list.fold(over: fields, from: acc)
 
-    let value = case dict.get(fields, key) {
-      Ok(existing_value) -> {
-        // If the existing value is already a list, append to it
-        // Otherwise, turn it into a list
-        case decode.run(existing_value, decode.list(of: decode.dynamic)) {
-          // NOTE: this puts the values in reverse order
-          Ok(existing_values) -> [value, ..existing_values] |> dynamic.list
-          Error(_) -> [value, existing_value] |> dynamic.list
-        }
-      }
-      // If there is no existing value, don't change the value
-      Error(Nil) -> value
-    }
-    dict.insert(into: fields, for: key, insert: value)
+    use existing_values <- dict.upsert(in: fields, update: key)
+    let existing_values = option.unwrap(existing_values, or: [])
+    [value, ..existing_values]
   }
 
   // The repeated values must be in order, so un-reverse them here
-  use _key, field <- dict.map_values(in: fields)
-  case decode.run(field, decode.list(of: decode.dynamic)) {
-    Ok(values) -> list.reverse(values) |> dynamic.list
-    Error(_) -> field
-  }
+  dict.map_values(in: fields, with: fn(_key, field) {
+    field |> list.reverse |> dynamic.list
+  })
 }
 
 type DecodeResult(t) =
