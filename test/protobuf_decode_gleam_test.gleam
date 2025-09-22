@@ -4,7 +4,7 @@ import gleeunit
 import simplifile as file
 
 import decoders
-import protobuf_decode_gleam.{parse}
+import protobuf_decode_gleam.{Parsed, parse}
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -45,8 +45,11 @@ fn person_decoder() -> Decoder(Person) {
 
 pub fn person_pb_test() {
   let path = "./test/person.pb"
+
   let assert Ok(bits) = file.read_bits(from: path)
-  let assert Ok(person) = parse(from: bits, using: person_decoder())
+  let assert Ok(Parsed(value: person, rest: <<>>, pos: _)) =
+    parse(from: bits, using: person_decoder())
+
   assert person
     == Person(
       id: 42,
@@ -87,7 +90,8 @@ pub fn two_ints_test() {
     0x04,
   >>
 
-  let assert Ok(data) = parse(from: bits, using: two_ints_decoder())
+  let assert Ok(Parsed(value: data, rest: <<>>, pos: 7)) =
+    parse(from: bits, using: two_ints_decoder())
   assert data == Test(id: 150, age: 80_150)
 }
 

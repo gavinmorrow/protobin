@@ -13,9 +13,11 @@ import internal/wire_type.{type WireType}
 pub fn parse(
   from bits: BitArray,
   using decoder: Decoder(t),
-) -> Result(t, ParseError) {
-  use data <- result.try(read_fields(bits, [], 0))
-  decode.run(data, decoder) |> result.map_error(UnableToDecode)
+) -> DecodeResult(Parsed(t)) {
+  use Parsed(value: data, rest:, pos:) <- result.try(read_fields(bits, [], 0))
+  decode.run(data, decoder)
+  |> result.map(fn(value) { Parsed(value:, rest:, pos:) })
+  |> result.map_error(UnableToDecode)
 }
 
 pub type ParseError {
@@ -30,13 +32,14 @@ fn read_fields(
   bits: BitArray,
   acc: List(Field),
   pos: BytePos,
-) -> Result(Dynamic, ParseError) {
+) -> DecodeResult(Parsed(Dynamic)) {
   case bits {
     <<>> ->
       acc
       |> repeated_to_list
       |> dict.to_list
       |> dynamic.properties
+      |> Parsed(value: _, rest: bits, pos:)
       |> Ok
     bits -> {
       use Parsed(value: prop, rest: bits, pos:) <- result.try(read_field(
@@ -70,13 +73,13 @@ fn repeated_to_list(fields: List(Field)) -> dict.Dict(Dynamic, Dynamic) {
   })
 }
 
-type DecodeResult(t) =
+pub type DecodeResult(t) =
   Result(t, ParseError)
 
-type BytePos =
+pub type BytePos =
   Int
 
-type Parsed(t) {
+pub type Parsed(t) {
   Parsed(value: t, rest: BitArray, pos: BytePos)
 }
 
@@ -89,7 +92,7 @@ type Field {
   Field(key: Dynamic, value: Dynamic)
 }
 
-fn wire_type_read_fn(ty: WireType) -> fn(BitArray, BytePos) -> ValueResult {
+fn wire_type_read_fn(ty: WireType) -> ValueParser {
   case ty {
     wire_type.VarInt -> read_varint
     wire_type.I64 -> read_fixed(64)
@@ -132,10 +135,13 @@ fn read_field(bits: BitArray, tag_pos: BytePos) -> DecodeResult(Parsed(Field)) {
   Ok(field)
 }
 
-type ValueResult =
+pub type ValueResult =
   DecodeResult(Parsed(BitArray))
 
-fn read_varint(bits: BitArray, pos: BytePos) -> ValueResult {
+pub type ValueParser =
+  fn(BitArray, BytePos) -> ValueResult
+
+pub fn read_varint(bits: BitArray, pos: BytePos) -> ValueResult {
   read_varint_acc(bits, <<>>, pos)
 }
 
@@ -152,7 +158,7 @@ fn read_varint_acc(bits: BitArray, acc: BitArray, pos: BytePos) -> ValueResult {
 }
 
 /// Size must be a multiple of 8.
-fn read_fixed(size: Int) -> fn(BitArray, BytePos) -> ValueResult {
+pub fn read_fixed(size: Int) -> ValueParser {
   assert size % 8 == 0
   fn(bits: BitArray, pos: BytePos) -> ValueResult {
     case bits {

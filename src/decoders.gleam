@@ -1,9 +1,65 @@
 import gleam/bit_array
+import gleam/dynamic
 import gleam/dynamic/decode.{type Decoder}
+import gleam/int
 import gleam/list
+import gleam/result
 
 import internal/util
-import protobuf_decode_gleam.{parse}
+import protobuf_decode_gleam.{
+  type BytePos, type DecodeResult, type ValueParser, Parsed, UnableToDecode,
+  parse,
+}
+
+/// Decode a repeated field that may be either packed or expanded.
+/// If the field is known ahead of time to be expanded, use the stdlib's
+/// `decode.list()`.
+pub fn multiple(
+  of decoder: Decoder(t),
+  using parser: ValueParser,
+) -> Decoder(List(t)) {
+  use values <- decode.then(
+    decode.one_of(decode.list(of: decoder), or: [
+      packed_values(of: decoder, using: parser),
+    ]),
+  )
+  values |> decode.success
+}
+
+fn packed_values(
+  of decoder: Decoder(t),
+  using parser: ValueParser,
+) -> Decoder(List(t)) {
+  use bits <- decode.then(decode.bit_array)
+
+  let values = {
+    use values <- result.try(unpack_bits(bits, [], at: 0, using: parser))
+    values
+    |> list.map(dynamic.bit_array)
+    |> list.try_map(fn(value) { decode.run(value, decoder) })
+    |> result.map_error(UnableToDecode)
+  }
+
+  case values {
+    Ok(values) -> decode.success(values)
+    Error(_) -> decode.failure([], "Packed values")
+  }
+}
+
+fn unpack_bits(
+  bits: BitArray,
+  acc: List(BitArray),
+  at pos: BytePos,
+  using parser: ValueParser,
+) -> DecodeResult(List(BitArray)) {
+  case bits {
+    <<>> -> acc |> list.reverse |> Ok
+    bits -> {
+      use Parsed(value:, rest:, pos:) <- result.try(parser(bits, pos))
+      unpack_bits(rest, [value, ..acc], at: pos, using: parser)
+    }
+  }
+}
 
 fn single(of decoder: Decoder(t)) -> Decoder(t) {
   use values <- decode.then(decode.list(of: decoder))
@@ -32,7 +88,7 @@ pub fn protobuf(
 
   let value = parse(from: bits, using: decoder())
   case value {
-    Ok(value) -> decode.success(value)
+    Ok(Parsed(value:, ..)) -> decode.success(value)
     Error(_) -> decode.failure(default, name)
   }
 }
