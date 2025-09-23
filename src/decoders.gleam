@@ -100,8 +100,10 @@ pub fn uint() -> Decoder(Int) {
 
 pub fn fixed(size: Int) -> Decoder(Int) {
   use bits <- decode.then(single_or_raw(decode.bit_array))
-  let assert <<num:unsigned-little-size(size)>> = bits
-  num |> decode.success
+  case bits {
+    <<num:unsigned-little-size(size)>> -> decode.success(num)
+    _ -> decode.failure(0, "Fixed(" <> int.to_string(size) <> ")")
+  }
 }
 
 pub fn string() -> Decoder(String) {
