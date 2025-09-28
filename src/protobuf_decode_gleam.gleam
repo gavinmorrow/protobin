@@ -51,7 +51,7 @@ fn read_fields(
   }
 }
 
-fn repeated_to_list(fields: List(Field)) -> dict.Dict(Dynamic, Dynamic) {
+fn repeated_to_list(reversed_fields: List(Field)) -> dict.Dict(Dynamic, Dynamic) {
   let fields = {
     // Every field is a list of values for two reasons:
     // a) expanded repeated values are encoded as repeated fields
@@ -60,17 +60,18 @@ fn repeated_to_list(fields: List(Field)) -> dict.Dict(Dynamic, Dynamic) {
     //    fields are repeating, it parses all fields as a list and then the
     //    decoders will handle choosing which value(s) to keep.
     let acc: dict.Dict(Dynamic, List(Dynamic)) = dict.new()
-    use fields, Field(key:, value:) <- list.fold(over: fields, from: acc)
+    use fields, Field(key:, value:) <- list.fold(
+      over: reversed_fields,
+      from: acc,
+    )
 
     use existing_values <- dict.upsert(in: fields, update: key)
     let existing_values = option.unwrap(existing_values, or: [])
+    // The repeated values were previously reversed, now being reversed again
     [value, ..existing_values]
   }
 
-  // The repeated values must be in order, so un-reverse them here
-  dict.map_values(in: fields, with: fn(_key, field) {
-    field |> list.reverse |> dynamic.list
-  })
+  dict.map_values(in: fields, with: fn(_key, field) { field |> dynamic.list })
 }
 
 pub type DecodeResult(t) =
@@ -92,9 +93,9 @@ type Field {
   Field(key: Dynamic, value: Dynamic)
 }
 
-fn wire_type_read_fn(ty: WireType) -> ValueParser {
+fn wire_type_consume_fn(ty: WireType) -> ValueParser {
   case ty {
-    wire_type.VarInt -> read_varint
+    wire_type.VarInt -> consume_varint
     wire_type.I64 -> read_fixed(64)
     wire_type.Len -> read_len
     wire_type.I32 -> read_fixed(32)
@@ -123,11 +124,10 @@ fn read_field(bits: BitArray, tag_pos: BytePos) -> DecodeResult(Parsed(Field)) {
     UnknownWireType(wire_type, pos: tag_pos),
   ))
 
-  let read_fn = wire_type_read_fn(wire_type)
-  use value: Parsed(Dynamic) <- result.try({
-    use value <- result.map(read_fn(bits, pos))
-    parsed_map(value, dynamic.bit_array)
-  })
+  let consume = wire_type_consume_fn(wire_type)
+  use value: Parsed(Dynamic) <- result.try(
+    consume(bits, pos) |> result.map(parsed_map(_, dynamic.bit_array)),
+  )
 
   let field =
     parsed_map(value, fn(value) { Field(key: dynamic.int(field_id), value:) })
@@ -141,6 +141,29 @@ pub type ValueResult =
 pub type ValueParser =
   fn(BitArray, BytePos) -> ValueResult
 
+pub fn consume_varint(bits: BitArray, pos: BytePos) -> ValueResult {
+  consume_varint_acc(bits, <<>>, pos)
+}
+
+fn consume_varint_acc(
+  bits: BitArray,
+  acc: BitArray,
+  pos: BytePos,
+) -> ValueResult {
+  case bits {
+    <<0:size(1), n:bits-size(7), rest:bytes>> -> {
+      let bit = <<0:size(1), n:bits>>
+      let acc = bit_array.concat([acc, bit])
+      Ok(Parsed(value: acc, rest:, pos: pos + 1))
+    }
+    <<1:size(1), n:bits-size(7), rest:bytes>> -> {
+      let bit = <<1:size(1), n:bits>>
+      consume_varint_acc(rest, bit_array.concat([acc, bit]), pos + 1)
+    }
+    bits -> Error(InvalidVarInt(leftover_bits: bits, acc:, pos:))
+  }
+}
+
 pub fn read_varint(bits: BitArray, pos: BytePos) -> ValueResult {
   read_varint_acc(bits, <<>>, pos)
 }
@@ -153,7 +176,9 @@ fn read_varint_acc(bits: BitArray, acc: BitArray, pos: BytePos) -> ValueResult {
     }
     <<1:size(1), n:bits-size(7), rest:bytes>> ->
       read_varint_acc(rest, bit_array.concat([n, acc]), pos + 1)
-    bits -> Error(InvalidVarInt(leftover_bits: bits, acc:, pos:))
+    bits -> {
+      Error(InvalidVarInt(leftover_bits: bits, acc:, pos:))
+    }
   }
 }
 

@@ -7,22 +7,19 @@ import gleam/result
 
 import internal/util
 import protobuf_decode_gleam.{
-  type BytePos, type DecodeResult, type ValueParser, Parsed, UnableToDecode,
-  parse,
+  type BytePos, type DecodeResult, type ValueParser, Parsed, parse, read_varint,
 }
 
 /// Decode a repeated field that may be either packed or expanded.
-/// If the field is known ahead of time to be expanded, use the stdlib's
-/// `decode.list()`.
+/// 
+/// If it is impossible for a field to be expanded (ie because it is encoded as
+/// a `LEN`) and therefore there is no `ValueParser` for it, then use the
+/// stdlib's `decode.list()` instead.
 pub fn multiple(
   of decoder: Decoder(t),
   using parser: ValueParser,
 ) -> Decoder(List(t)) {
-  use values <- decode.then(
-    decode.one_of(decode.list(of: decoder), or: [
-      packed_values(of: decoder, using: parser),
-    ]),
-  )
+  use values <- decode.then(packed_values(of: decoder, using: parser))
   values |> decode.success
 }
 
@@ -30,14 +27,16 @@ fn packed_values(
   of decoder: Decoder(t),
   using parser: ValueParser,
 ) -> Decoder(List(t)) {
-  use bits <- decode.then(decode.bit_array)
+  use bits <- decode.then(decode.list(of: decode.bit_array))
+  let bits =
+    list.fold(bits, <<>>, fn(acc, elem) { bit_array.concat([acc, elem]) })
 
   let values = {
     use values <- result.try(unpack_bits(bits, [], at: 0, using: parser))
     values
     |> list.map(dynamic.bit_array)
     |> list.try_map(fn(value) { decode.run(value, decoder) })
-    |> result.map_error(UnableToDecode)
+    |> result.map_error(protobuf_decode_gleam.UnableToDecode)
   }
 
   case values {
@@ -61,6 +60,7 @@ fn unpack_bits(
   }
 }
 
+/// Expects a single value from a list. Panics if the list is empty.
 fn single(of decoder: Decoder(t)) -> Decoder(t) {
   use values <- decode.then(decode.list(of: decoder))
 
@@ -95,7 +95,11 @@ pub fn protobuf(
 
 pub fn uint() -> Decoder(Int) {
   use bits <- decode.then(single_or_raw(decode.bit_array))
-  util.bit_array_to_uint(bits) |> decode.success
+  use bits <- decode.then(case read_varint(bits, 0) {
+    Ok(Parsed(value:, rest: <<>>, pos: _)) -> decode.success(value)
+    _ -> decode.failure(<<>>, "uint")
+  })
+  bits |> util.bit_array_to_uint |> decode.success
 }
 
 pub fn fixed(size: Int) -> Decoder(Int) {
