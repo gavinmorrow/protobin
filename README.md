@@ -18,11 +18,18 @@ gleam add protobuf_decode_gleam@1
 ```
 -->
 ```gleam
-import protobuf_decode_gleam
-import option
+import protobuf_decode_gleam.{parse, read_varint}
+import protobuf_decode_gleam/decoders
+
+import gleam/option
 
 type Person {
-  Person(id: Int, age: option.Option(Int), score: Int)
+  Person(
+    id: Int,
+    age: option.Option(Int),
+    score: Int,
+    fav_nums: List(Int),
+  )
 }
 
 fn person_decoder() -> Decoder(Person) {
@@ -33,12 +40,15 @@ fn person_decoder() -> Decoder(Person) {
     decode.optional(decoders.uint()),
   )
   use score <- decode.field(2, decoders.uint())
+  use fav_nums <- decode.field(
+    42,
+    decoders.multiple(of: decoders.uint(), using: read_varint),
+  )
 
   Person(id:, age:, score:) |> decode.success
 }
 
 pub fn main() -> Nil {
-  // See the tests as well, they have decent examples.
   let path = "./path/to/person.pb"
 
   let assert Ok(bits) = file.read_bits(from: path)
@@ -48,8 +58,8 @@ pub fn main() -> Nil {
   assert person
     == Person(
       id: 42,
-      age: 150,
-      score: option.Some(81_050),
+      age: option.Some(150),
+      score: 81_050,
     )
 }
 ```
