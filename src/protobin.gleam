@@ -28,9 +28,20 @@ pub type Parsed(t) {
   Parsed(value: t, rest: BitArray, pos: BytePos)
 }
 
+fn parsed_map(of parsed: Parsed(t), with fun: fn(t) -> u) -> Parsed(u) {
+  let Parsed(value:, rest:, pos:) = parsed
+  Parsed(value: fun(value), rest:, pos:)
+}
+
 type Field {
   Field(key: Dynamic, value: Dynamic)
 }
+
+pub type ValueResult =
+  DecodeResult(Parsed(BitArray))
+
+pub type ValueParser =
+  fn(BitArray, BytePos) -> ValueResult
 
 pub fn parse(
   from bits: BitArray,
@@ -88,20 +99,6 @@ fn repeated_to_list(reversed_fields: List(Field)) -> dict.Dict(Dynamic, Dynamic)
   dict.map_values(in: fields, with: fn(_key, field) { field |> dynamic.list })
 }
 
-fn parsed_map(of parsed: Parsed(t), with fun: fn(t) -> u) -> Parsed(u) {
-  let Parsed(value:, rest:, pos:) = parsed
-  Parsed(value: fun(value), rest:, pos:)
-}
-
-fn wire_type_read_fn(ty: WireType) -> ValueParser {
-  case ty {
-    wire_type.VarInt -> read_varint
-    wire_type.I64 -> read_fixed(64)
-    wire_type.Len -> read_len
-    wire_type.I32 -> read_fixed(32)
-  }
-}
-
 fn read_field(bits: BitArray, tag_pos: BytePos) -> DecodeResult(Parsed(Field)) {
   use Parsed(value: tag, rest: bits, pos:) <- result.try(parse_varint(
     bits,
@@ -135,11 +132,14 @@ fn read_field(bits: BitArray, tag_pos: BytePos) -> DecodeResult(Parsed(Field)) {
   Ok(field)
 }
 
-pub type ValueResult =
-  DecodeResult(Parsed(BitArray))
-
-pub type ValueParser =
-  fn(BitArray, BytePos) -> ValueResult
+fn wire_type_read_fn(ty: WireType) -> ValueParser {
+  case ty {
+    wire_type.VarInt -> read_varint
+    wire_type.I64 -> read_fixed(64)
+    wire_type.Len -> read_len
+    wire_type.I32 -> read_fixed(32)
+  }
+}
 
 /// Reads the bits from a varint and returns *all* of them. They cannot be
 /// parsed as a uint.
