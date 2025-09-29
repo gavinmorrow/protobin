@@ -109,13 +109,6 @@ fn read_field(bits: BitArray, tag_pos: BytePos) -> DecodeResult(Parsed(Field)) {
   let field_id = tag |> int.bitwise_shift_right(3)
   let wire_type = tag |> int.bitwise_and(0b111)
 
-  case wire_type {
-    6 -> {
-      echo tag as "tag"
-      Nil
-    }
-    _ -> Nil
-  }
   use wire_type <- result.try(option.to_result(
     wire_type.parse(wire_type),
     UnknownWireType(wire_type, pos: tag_pos),
