@@ -178,11 +178,11 @@ pub fn gtfs_test() {
         "1.0",
         1_758_224_061,
         NyctHeader("1.0", [
-          TripReplacementPeriod("7", 1_758_224_061),
-          TripReplacementPeriod("6", 1_758_224_061),
-          TripReplacementPeriod("5", 1_758_224_061),
-          TripReplacementPeriod("2", 1_758_224_061),
           TripReplacementPeriod("1", 1_758_224_061),
+          TripReplacementPeriod("2", 1_758_224_061),
+          TripReplacementPeriod("5", 1_758_224_061),
+          TripReplacementPeriod("6", 1_758_224_061),
+          TripReplacementPeriod("7", 1_758_224_061),
         ]),
       ),
       <<>>,
@@ -214,8 +214,8 @@ pub fn packed_fields_test() {
 
   assert packed_fields
     == Parsed(
-      value: PackedFields(packed: [1, 2, 3], expanded: [4, 5, 6]),
+      value: PackedFields(packed: [0, 1, 2, 3], expanded: [4, 5, 6]),
       rest: <<>>,
-      pos: 9,
+      pos: 14,
     )
 }
