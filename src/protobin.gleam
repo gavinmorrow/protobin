@@ -165,7 +165,7 @@ fn read_varint_acc(bits: BitArray, acc: BitArray, pos: BytePos) -> ValueResult {
   }
 }
 
-/// Reads the bits from a varint and parses them a BitArray. The returned bits
+/// Reads the bits from a varint and parses them a `BitArray`. The returned bits
 /// can be parsed as a uint.
 ///
 /// For a decoder that does this, use `decoders.uint()`.
