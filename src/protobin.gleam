@@ -10,6 +10,28 @@ import gleam/result
 import protobin/internal/util
 import protobin/internal/wire_type.{type WireType}
 
+pub type BytePos =
+  Int
+
+pub type ParseError {
+  UnknownWireType(Int, pos: BytePos)
+  InvalidVarInt(leftover_bits: BitArray, acc: BitArray, pos: BytePos)
+  InvalidFixed(size: Int, bits: BitArray, pos: BytePos)
+  InvalidLen(len: Int, value_bits: BitArray, pos: BytePos)
+  UnableToDecode(List(decode.DecodeError))
+}
+
+pub type DecodeResult(t) =
+  Result(t, ParseError)
+
+pub type Parsed(t) {
+  Parsed(value: t, rest: BitArray, pos: BytePos)
+}
+
+type Field {
+  Field(key: Dynamic, value: Dynamic)
+}
+
 pub fn parse(
   from bits: BitArray,
   using decoder: Decoder(t),
@@ -18,14 +40,6 @@ pub fn parse(
   decode.run(data, decoder)
   |> result.map(fn(value) { Parsed(value:, rest:, pos:) })
   |> result.map_error(UnableToDecode)
-}
-
-pub type ParseError {
-  UnknownWireType(Int, pos: BytePos)
-  InvalidVarInt(leftover_bits: BitArray, acc: BitArray, pos: BytePos)
-  InvalidFixed(size: Int, bits: BitArray, pos: BytePos)
-  InvalidLen(len: Int, value_bits: BitArray, pos: BytePos)
-  UnableToDecode(List(decode.DecodeError))
 }
 
 fn read_fields(
@@ -74,23 +88,9 @@ fn repeated_to_list(reversed_fields: List(Field)) -> dict.Dict(Dynamic, Dynamic)
   dict.map_values(in: fields, with: fn(_key, field) { field |> dynamic.list })
 }
 
-pub type DecodeResult(t) =
-  Result(t, ParseError)
-
-pub type BytePos =
-  Int
-
-pub type Parsed(t) {
-  Parsed(value: t, rest: BitArray, pos: BytePos)
-}
-
 fn parsed_map(of parsed: Parsed(t), with fun: fn(t) -> u) -> Parsed(u) {
   let Parsed(value:, rest:, pos:) = parsed
   Parsed(value: fun(value), rest:, pos:)
-}
-
-type Field {
-  Field(key: Dynamic, value: Dynamic)
 }
 
 fn wire_type_read_fn(ty: WireType) -> ValueParser {
