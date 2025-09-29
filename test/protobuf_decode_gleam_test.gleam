@@ -4,7 +4,7 @@ import gleeunit
 import simplifile as file
 
 import decoders
-import protobuf_decode_gleam.{Parsed, read_varint, parse}
+import protobuf_decode_gleam.{Parsed, parse, read_fixed, read_varint}
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -191,7 +191,11 @@ pub fn gtfs_test() {
 }
 
 type PackedFields {
-  PackedFields(packed: List(Int), expanded: List(Int))
+  PackedFields(
+    packed: List(Int),
+    expanded: List(Int),
+    mixed_packed_and_expanded: List(Int),
+  )
 }
 
 fn packed_fields_decoder() -> Decoder(PackedFields) {
@@ -203,7 +207,11 @@ fn packed_fields_decoder() -> Decoder(PackedFields) {
     4,
     decoders.multiple(of: decoders.uint(), using: read_varint),
   )
-  PackedFields(packed:, expanded:) |> decode.success
+  use mixed_packed_and_expanded <- decode.field(
+    11,
+    decoders.multiple(of: decoders.fixed(32), using: read_fixed(32)),
+  )
+  PackedFields(packed:, expanded:, mixed_packed_and_expanded:) |> decode.success
 }
 
 pub fn packed_fields_test() {
@@ -214,8 +222,12 @@ pub fn packed_fields_test() {
 
   assert packed_fields
     == Parsed(
-      value: PackedFields(packed: [0, 1, 2, 3], expanded: [4, 5, 6]),
+      value: PackedFields(
+        packed: [0, 1, 2, 3],
+        expanded: [4, 5, 6],
+        mixed_packed_and_expanded: [256, 22, 42, 101, 4_294_967_295, 0, 1],
+      ),
       rest: <<>>,
-      pos: 14,
+      pos: 48,
     )
 }
