@@ -3,7 +3,6 @@ import gleam/option
 import gleeunit
 import simplifile as file
 
-import decoders
 import protobin.{Parsed, parse, read_fixed, read_varint}
 
 pub fn main() -> Nil {
@@ -24,21 +23,21 @@ const default_person = Person(
 
 fn person_decoder() -> Decoder(Person) {
   let person_inner_decoder =
-    decoders.protobuf(
+    protobin.decode_protobuf(
       using: person_decoder,
       named: "Person",
       default: default_person,
     )
 
-  use id <- decode.field(3, decoders.fixed(64))
-  use age <- decode.field(1, decoders.uint())
-  use score <- decode.field(2, decoders.uint())
+  use id <- decode.field(3, protobin.decode_fixed(64))
+  use age <- decode.field(1, protobin.decode_uint())
+  use score <- decode.field(2, protobin.decode_uint())
   use person <- decode.optional_field(
     4,
     option.None,
     decode.optional(person_inner_decoder),
   )
-  use day <- decode.field(5, decoders.fixed(32))
+  use day <- decode.field(5, protobin.decode_fixed(32))
 
   Person(id:, age:, score:, self: person, day:) |> decode.success
 }
@@ -71,8 +70,8 @@ type TwoInts {
 }
 
 fn two_ints_decoder() -> Decoder(TwoInts) {
-  use id <- decode.field(1, decoders.uint())
-  use age <- decode.field(2, decoders.uint())
+  use id <- decode.field(1, protobin.decode_uint())
+  use age <- decode.field(2, protobin.decode_uint())
 
   Test(id:, age:) |> decode.success
 }
@@ -121,11 +120,11 @@ const trip_replacement_period_default = TripReplacementPeriod(
 )
 
 fn feed_header_decoder() -> Decoder(FeedHeader) {
-  use gtfs_realtime_version <- decode.field(1, decoders.string())
-  use timestamp <- decode.field(3, decoders.fixed(64))
+  use gtfs_realtime_version <- decode.field(1, protobin.decode_string())
+  use timestamp <- decode.field(3, protobin.decode_fixed(64))
   use nyct <- decode.field(
     1001,
-    decoders.protobuf(
+    protobin.decode_protobuf(
       using: nyct_header_decoder,
       named: "NyctHeader",
       default: nyct_header_default,
@@ -135,11 +134,11 @@ fn feed_header_decoder() -> Decoder(FeedHeader) {
 }
 
 fn nyct_header_decoder() -> Decoder(NyctHeader) {
-  use version <- decode.field(1, decoders.string())
+  use version <- decode.field(1, protobin.decode_string())
 
   use trip_replacement_periods <- decode.field(
     2,
-    decode.list(of: decoders.protobuf(
+    decode.list(of: protobin.decode_protobuf(
       using: trip_replacement_period_decoder,
       named: "TripReplacementPeriod",
       default: trip_replacement_period_default,
@@ -150,10 +149,10 @@ fn nyct_header_decoder() -> Decoder(NyctHeader) {
 }
 
 fn trip_replacement_period_decoder() -> Decoder(TripReplacementPeriod) {
-  use route_id <- decode.field(1, decoders.string())
+  use route_id <- decode.field(1, protobin.decode_string())
   use replacement_period <- decode.field(
     2,
-    decoders.protobuf(
+    protobin.decode_protobuf(
       using: trip_replacement_period_time_range_decoder,
       named: "TripReplacePeriod.TimeRange",
       default: 0,
@@ -163,7 +162,7 @@ fn trip_replacement_period_decoder() -> Decoder(TripReplacementPeriod) {
 }
 
 fn trip_replacement_period_time_range_decoder() -> Decoder(Int) {
-  use time <- decode.field(2, decoders.fixed(64))
+  use time <- decode.field(2, protobin.decode_fixed(64))
   time |> decode.success
 }
 
@@ -201,15 +200,18 @@ type PackedFields {
 fn packed_fields_decoder() -> Decoder(PackedFields) {
   use packed <- decode.field(
     3,
-    decoders.multiple(of: decoders.uint(), using: read_varint),
+    protobin.decode_multiple(of: protobin.decode_uint(), using: read_varint),
   )
   use expanded <- decode.field(
     4,
-    decoders.multiple(of: decoders.uint(), using: read_varint),
+    protobin.decode_multiple(of: protobin.decode_uint(), using: read_varint),
   )
   use mixed_packed_and_expanded <- decode.field(
     11,
-    decoders.multiple(of: decoders.fixed(32), using: read_fixed(32)),
+    protobin.decode_multiple(
+      of: protobin.decode_fixed(32),
+      using: read_fixed(32),
+    ),
   )
   PackedFields(packed:, expanded:, mixed_packed_and_expanded:) |> decode.success
 }
