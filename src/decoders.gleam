@@ -12,7 +12,7 @@ import protobuf_decode_gleam.{
 
 /// Decode a repeated field that may be either packed or expanded.
 /// 
-/// If it is impossible for a field to be expanded (ie because it is encoded as
+/// If it is impossible for a field to be packed (ie because it is encoded as
 /// a `LEN`) and therefore there is no `ValueParser` for it, then use the
 /// stdlib's `decode.list()` instead.
 pub fn multiple(
