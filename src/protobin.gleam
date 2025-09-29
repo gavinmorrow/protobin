@@ -275,22 +275,33 @@ fn unpack_bits(
   }
 }
 
-/// Expects a single value from a list. Panics if the list is empty.
-fn single(of decoder: Decoder(t)) -> Decoder(t) {
+/// Takes the last value from the list.
+fn single(
+  of decoder: Decoder(t),
+  named name: String,
+  default default: t,
+) -> Decoder(t) {
   use values <- decode.then(decode.list(of: decoder))
 
-  // I choose to use assert instead of `decode.failure` because the decode api
-  // requires passing a name and default value, which is clunky and would've
-  // added two parameters to this function.
-  // The only times this could fail are programmer error on my part or using
-  // this decoder on data not produced in a compatible way with this library.
-  let assert Ok(value) = list.last(values)
-  value |> decode.success
+  case list.last(values) {
+    Ok(value) -> decode.success(value)
+    Error(Nil) -> decode.failure(default, name)
+  }
 }
 
 // Allows the decoders to be used for either single or repeated fields
-fn single_or_raw(decoder: Decoder(t)) -> Decoder(t) {
-  decode.one_of(decoder, or: [single(of: decoder)])
+fn single_or_raw(
+  of decoder: Decoder(t),
+  named name: String,
+  default default: t,
+) -> Decoder(t) {
+  decode.one_of(decoder, or: [
+    single(of: decoder, named: name, default: default),
+  ])
+}
+
+fn single_or_raw_bit_array() -> Decoder(BitArray) {
+  single_or_raw(of: decode.bit_array, named: "BitArray", default: <<>>)
 }
 
 pub fn decode_protobuf(
@@ -299,17 +310,17 @@ pub fn decode_protobuf(
   named name: String,
   default default: t,
 ) -> Decoder(t) {
-  use bits <- decode.then(single_or_raw(decode.bit_array))
+  use bits <- decode.then(single_or_raw_bit_array())
 
   let value = parse(from: bits, using: decoder())
   case value {
-    Ok(Parsed(value:, ..)) -> decode.success(value)
-    Error(_) -> decode.failure(default, name)
+    Ok(Parsed(value:, rest: <<>>, pos: _)) -> decode.success(value)
+    _ -> decode.failure(default, name)
   }
 }
 
 pub fn decode_uint() -> Decoder(Int) {
-  use bits <- decode.then(single_or_raw(decode.bit_array))
+  use bits <- decode.then(single_or_raw_bit_array())
   use bits <- decode.then(case parse_varint(bits, 0) {
     Ok(Parsed(value:, rest: <<>>, pos: _)) -> decode.success(value)
     _ -> decode.failure(<<>>, "uint")
@@ -318,7 +329,7 @@ pub fn decode_uint() -> Decoder(Int) {
 }
 
 pub fn decode_fixed(size: Int) -> Decoder(Int) {
-  use bits <- decode.then(single_or_raw(decode.bit_array))
+  use bits <- decode.then(single_or_raw_bit_array())
   case bits {
     <<num:unsigned-little-size(size)>> -> decode.success(num)
     _ -> decode.failure(0, "Fixed(" <> int.to_string(size) <> ")")
@@ -326,7 +337,7 @@ pub fn decode_fixed(size: Int) -> Decoder(Int) {
 }
 
 pub fn decode_string() -> Decoder(String) {
-  use bits <- decode.then(single_or_raw(decode.bit_array))
+  use bits <- decode.then(single_or_raw_bit_array())
 
   let str = bit_array.to_string(bits)
   case str {
