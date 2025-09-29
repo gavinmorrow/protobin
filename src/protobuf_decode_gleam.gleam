@@ -93,9 +93,9 @@ type Field {
   Field(key: Dynamic, value: Dynamic)
 }
 
-fn wire_type_consume_fn(ty: WireType) -> ValueParser {
+fn wire_type_read_fn(ty: WireType) -> ValueParser {
   case ty {
-    wire_type.VarInt -> consume_varint
+    wire_type.VarInt -> read_varint
     wire_type.I64 -> read_fixed(64)
     wire_type.Len -> read_len
     wire_type.I32 -> read_fixed(32)
@@ -103,7 +103,7 @@ fn wire_type_consume_fn(ty: WireType) -> ValueParser {
 }
 
 fn read_field(bits: BitArray, tag_pos: BytePos) -> DecodeResult(Parsed(Field)) {
-  use Parsed(value: tag, rest: bits, pos:) <- result.try(read_varint(
+  use Parsed(value: tag, rest: bits, pos:) <- result.try(parse_varint(
     bits,
     tag_pos,
   ))
@@ -124,9 +124,9 @@ fn read_field(bits: BitArray, tag_pos: BytePos) -> DecodeResult(Parsed(Field)) {
     UnknownWireType(wire_type, pos: tag_pos),
   ))
 
-  let consume = wire_type_consume_fn(wire_type)
+  let read = wire_type_read_fn(wire_type)
   use value: Parsed(Dynamic) <- result.try(
-    consume(bits, pos) |> result.map(parsed_map(_, dynamic.bit_array)),
+    read(bits, pos) |> result.map(parsed_map(_, dynamic.bit_array)),
   )
 
   let field =
@@ -141,15 +141,16 @@ pub type ValueResult =
 pub type ValueParser =
   fn(BitArray, BytePos) -> ValueResult
 
-pub fn consume_varint(bits: BitArray, pos: BytePos) -> ValueResult {
-  consume_varint_acc(bits, <<>>, pos)
+/// Reads the bits from a varint and returns *all* of them. They cannot be
+/// parsed as a uint.
+///
+/// Specifically, the continuation bits are included, so the value's bit size
+/// will be a multiple of 8.
+pub fn read_varint(bits: BitArray, pos: BytePos) -> ValueResult {
+  read_varint_acc(bits, <<>>, pos)
 }
 
-fn consume_varint_acc(
-  bits: BitArray,
-  acc: BitArray,
-  pos: BytePos,
-) -> ValueResult {
+fn read_varint_acc(bits: BitArray, acc: BitArray, pos: BytePos) -> ValueResult {
   case bits {
     <<0:size(1), n:bits-size(7), rest:bytes>> -> {
       let bit = <<0:size(1), n:bits>>
@@ -158,24 +159,31 @@ fn consume_varint_acc(
     }
     <<1:size(1), n:bits-size(7), rest:bytes>> -> {
       let bit = <<1:size(1), n:bits>>
-      consume_varint_acc(rest, bit_array.concat([acc, bit]), pos + 1)
+      read_varint_acc(rest, bit_array.concat([acc, bit]), pos + 1)
     }
     bits -> Error(InvalidVarInt(leftover_bits: bits, acc:, pos:))
   }
 }
 
-pub fn read_varint(bits: BitArray, pos: BytePos) -> ValueResult {
-  read_varint_acc(bits, <<>>, pos)
+/// Reads the bits from a varint and parses them a BitArray. The returned bits
+/// can be parsed as a uint.
+///
+/// For a decoder that does this, use `decoders.uint()`.
+///
+/// The continuation bits are not included, so the value's bit size will be a
+/// multiple of 7.
+pub fn parse_varint(bits: BitArray, pos: BytePos) -> ValueResult {
+  parse_varint_acc(bits, <<>>, pos)
 }
 
-fn read_varint_acc(bits: BitArray, acc: BitArray, pos: BytePos) -> ValueResult {
+fn parse_varint_acc(bits: BitArray, acc: BitArray, pos: BytePos) -> ValueResult {
   case bits {
     <<0:size(1), n:bits-size(7), rest:bytes>> -> {
       let acc = bit_array.concat([n, acc])
       Ok(Parsed(value: acc, rest:, pos: pos + 1))
     }
     <<1:size(1), n:bits-size(7), rest:bytes>> ->
-      read_varint_acc(rest, bit_array.concat([n, acc]), pos + 1)
+      parse_varint_acc(rest, bit_array.concat([n, acc]), pos + 1)
     bits -> {
       Error(InvalidVarInt(leftover_bits: bits, acc:, pos:))
     }
@@ -197,7 +205,7 @@ pub fn read_fixed(size: Int) -> ValueParser {
 fn read_len(bits: BitArray, len_pos: BytePos) -> ValueResult {
   // First, read the length of the value
   // It is encoded as a varint immediately after the tag
-  use Parsed(value: len, rest: bits, pos:) <- result.try(read_varint(
+  use Parsed(value: len, rest: bits, pos:) <- result.try(parse_varint(
     bits,
     len_pos,
   ))

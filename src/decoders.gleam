@@ -7,7 +7,7 @@ import gleam/result
 
 import internal/util
 import protobuf_decode_gleam.{
-  type BytePos, type DecodeResult, type ValueParser, Parsed, parse, read_varint,
+  type BytePos, type DecodeResult, type ValueParser, Parsed, parse, parse_varint,
 }
 
 /// Decode a repeated field that may be either packed or expanded.
@@ -95,7 +95,7 @@ pub fn protobuf(
 
 pub fn uint() -> Decoder(Int) {
   use bits <- decode.then(single_or_raw(decode.bit_array))
-  use bits <- decode.then(case read_varint(bits, 0) {
+  use bits <- decode.then(case parse_varint(bits, 0) {
     Ok(Parsed(value:, rest: <<>>, pos: _)) -> decode.success(value)
     _ -> decode.failure(<<>>, "uint")
   })

@@ -4,7 +4,7 @@ import gleeunit
 import simplifile as file
 
 import decoders
-import protobuf_decode_gleam.{Parsed, consume_varint, parse}
+import protobuf_decode_gleam.{Parsed, read_varint, parse}
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -197,11 +197,11 @@ type PackedFields {
 fn packed_fields_decoder() -> Decoder(PackedFields) {
   use packed <- decode.field(
     3,
-    decoders.multiple(of: decoders.uint(), using: consume_varint),
+    decoders.multiple(of: decoders.uint(), using: read_varint),
   )
   use expanded <- decode.field(
     4,
-    decoders.multiple(of: decoders.uint(), using: consume_varint),
+    decoders.multiple(of: decoders.uint(), using: read_varint),
   )
   PackedFields(packed:, expanded:) |> decode.success
 }
