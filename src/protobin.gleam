@@ -190,9 +190,10 @@ fn parse_varint_acc(bits: BitArray, acc: BitArray, pos: BytePos) -> ValueResult 
   }
 }
 
-/// Size must be a multiple of 8.
+/// Size is in bits, usually either 32 or 64.
+///
+/// Size must be a multiple of 8, or the returned position will be incorrect.
 pub fn read_fixed(size: Int) -> ValueParser {
-  assert size % 8 == 0
   fn(bits: BitArray, pos: BytePos) -> ValueResult {
     case bits {
       <<num:bits-size(size), rest:bytes>> ->
@@ -210,9 +211,6 @@ fn read_len(bits: BitArray, len_pos: BytePos) -> ValueResult {
     len_pos,
   ))
   let len = util.bit_array_to_uint(len)
-
-  // Just decoded a uint, so should be safe
-  assert len > 0
 
   use value <- result.try(
     bit_array.slice(from: bits, at: 0, take: len)
