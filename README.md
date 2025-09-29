@@ -1,6 +1,6 @@
-# protobuf_decode_gleam
+# protobin
 
-Decode the protobuf wire format!
+Decode the protobuf wire format using gleam `Decoder`s!
 
 This is just a little toy I made mostly for myself. I would be happy to
 polish it and make it work better, but for now this should not be used at all.
@@ -9,17 +9,17 @@ email is on my github profile).
 
 Also, there is currently no support for encoding the protobuf wire format.
 <!--
-[![Package Version](https://img.shields.io/hexpm/v/protobuf_decode_gleam)](https://hex.pm/packages/protobuf_decode_gleam)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/protobuf_decode_gleam/)
+[![Package Version](https://img.shields.io/hexpm/v/protobin)](https://hex.pm/packages/protobin)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/protobin/)
 
 
 ```sh
-gleam add protobuf_decode_gleam@1
+gleam add protobin@1
 ```
 -->
 ```gleam
-import protobuf_decode_gleam.{parse, read_varint}
-import protobuf_decode_gleam/decoders
+import protobin.{parse, read_varint}
+import protobin/decoders
 
 import gleam/option
 
@@ -65,7 +65,7 @@ pub fn main() -> Nil {
 ```
 
 <!--
-Further documentation can be found at <https://hexdocs.pm/protobuf_decode_gleam>.
+Further documentation can be found at <https://hexdocs.pm/protobin>.
 -->
 
 ## Development

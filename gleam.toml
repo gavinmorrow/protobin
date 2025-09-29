@@ -1,4 +1,4 @@
-name = "protobuf_decode_gleam"
+name = "protobin"
 version = "1.0.0"
 
 # Fill out these fields if you intend to generate HTML documentation or publish
@@ -6,7 +6,7 @@ version = "1.0.0"
 #
 description = "Decode the protobuf wire format."
 licences = ["Apache-2.0"]
-repository = { type = "github", user = "gavinmorrow", repo = "protobuf-decode-gleam" }
+repository = { type = "github", user = "gavinmorrow", repo = "gleam-protobin" }
 # links = [{ title = "Website", href = "" }]
 #
 # For a full reference of all the available options, you can have a look at

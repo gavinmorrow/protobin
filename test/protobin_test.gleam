@@ -4,7 +4,7 @@ import gleeunit
 import simplifile as file
 
 import decoders
-import protobuf_decode_gleam.{Parsed, parse, read_fixed, read_varint}
+import protobin.{Parsed, parse, read_fixed, read_varint}
 
 pub fn main() -> Nil {
   gleeunit.main()

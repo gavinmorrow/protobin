@@ -5,10 +5,10 @@ import gleam/int
 import gleam/list
 import gleam/result
 
-import internal/util
-import protobuf_decode_gleam.{
+import protobin.{
   type BytePos, type DecodeResult, type ValueParser, Parsed, parse, parse_varint,
 }
+import internal/util
 
 /// Decode a repeated field that may be either packed or expanded.
 /// 
@@ -36,7 +36,7 @@ fn packed_values(
     values
     |> list.map(dynamic.bit_array)
     |> list.try_map(fn(value) { decode.run(value, decoder) })
-    |> result.map_error(protobuf_decode_gleam.UnableToDecode)
+    |> result.map_error(protobin.UnableToDecode)
   }
 
   case values {
