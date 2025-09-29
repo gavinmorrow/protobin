@@ -7,8 +7,8 @@ import gleam/list
 import gleam/option
 import gleam/result
 
-import internal/util
-import internal/wire_type.{type WireType}
+import protobin/internal/util
+import protobin/internal/wire_type.{type WireType}
 
 pub fn parse(
   from bits: BitArray,

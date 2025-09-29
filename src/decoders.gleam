@@ -8,7 +8,7 @@ import gleam/result
 import protobin.{
   type BytePos, type DecodeResult, type ValueParser, Parsed, parse, parse_varint,
 }
-import internal/util
+import protobin/internal/util
 
 /// Decode a repeated field that may be either packed or expanded.
 /// 
