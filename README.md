@@ -12,9 +12,11 @@ Also, there is currently no support for encoding the protobuf wire format.
 [![Package Version](https://img.shields.io/hexpm/v/protobuf_decode_gleam)](https://hex.pm/packages/protobuf_decode_gleam)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/protobuf_decode_gleam/)
 
+<!--
 ```sh
 gleam add protobuf_decode_gleam@1
 ```
+-->
 ```gleam
 import protobuf_decode_gleam
 
