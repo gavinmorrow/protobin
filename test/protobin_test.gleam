@@ -10,11 +10,19 @@ pub fn main() -> Nil {
 }
 
 type Person {
-  Person(id: Int, age: Int, score: Int, self: option.Option(Person), day: Int)
+  Person(
+    id: Int,
+    name: String,
+    age: Int,
+    score: Int,
+    self: option.Option(Person),
+    day: Int,
+  )
 }
 
 const default_person = Person(
   id: 0,
+  name: "",
   age: 0,
   score: 0,
   self: option.None,
@@ -30,6 +38,7 @@ fn person_decoder() -> Decoder(Person) {
     )
 
   use id <- decode.field(3, protobin.decode_fixed(64))
+  use name <- decode.field(6, protobin.decode_string())
   use age <- decode.field(1, protobin.decode_uint())
   use score <- decode.field(2, protobin.decode_uint())
   use person <- decode.optional_field(
@@ -39,7 +48,7 @@ fn person_decoder() -> Decoder(Person) {
   )
   use day <- decode.field(5, protobin.decode_fixed(32))
 
-  Person(id:, age:, score:, self: person, day:) |> decode.success
+  Person(id:, name:, age:, score:, self: person, day:) |> decode.success
 }
 
 pub fn person_pb_test() {
@@ -52,10 +61,12 @@ pub fn person_pb_test() {
   assert person
     == Person(
       id: 42,
+      name: "Aria",
       age: 150,
       score: 81_050,
       self: option.Some(Person(
         id: 42,
+        name: "Aria",
         age: 150,
         score: 81_050,
         self: option.None,
