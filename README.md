@@ -8,11 +8,11 @@ Unless you're really quite adventurous and are willing to reach out to me (my
 email is on my github profile).
 
 Also, there is currently no support for encoding the protobuf wire format.
-
+<!--
 [![Package Version](https://img.shields.io/hexpm/v/protobuf_decode_gleam)](https://hex.pm/packages/protobuf_decode_gleam)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/protobuf_decode_gleam/)
 
-<!--
+
 ```sh
 gleam add protobuf_decode_gleam@1
 ```
@@ -26,7 +26,9 @@ pub fn main() -> Nil {
 }
 ```
 
+<!--
 Further documentation can be found at <https://hexdocs.pm/protobuf_decode_gleam>.
+-->
 
 ## Development
 
