@@ -2,12 +2,7 @@
 
 Decode the protobuf wire format using gleam `Decoder`s!
 
-This is just a little toy I made mostly for myself. I would be happy to
-polish it and make it work better, but for now this should not be used at all.
-Unless you're really quite adventurous and are willing to reach out to me (my
-email is on my github profile).
-
-Also, there is currently no support for encoding the protobuf wire format.
+There is currently no support for encoding the protobuf wire format.
 
 
 [![Package Version](https://img.shields.io/hexpm/v/protobin)](https://hex.pm/packages/protobin)
