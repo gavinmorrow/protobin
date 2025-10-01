@@ -4,6 +4,8 @@ pub type WireType {
   VarInt
   I64
   Len
+  SGroup
+  EGroup
   I32
 }
 
@@ -12,6 +14,8 @@ pub fn parse(i: Int) -> Option(WireType) {
     0 -> Some(VarInt)
     1 -> Some(I64)
     2 -> Some(Len)
+    3 -> Some(SGroup)
+    4 -> Some(EGroup)
     5 -> Some(I32)
     _ -> None
   }

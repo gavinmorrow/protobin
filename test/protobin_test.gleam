@@ -250,3 +250,29 @@ pub fn packed_fields_test() {
       pos: 48,
     )
 }
+
+pub type IgnoresGroups {
+  IgnoresGroups(a: Int, b: Bool, c: String, d: Int)
+}
+
+fn ignores_groups_decoder() -> Decoder(IgnoresGroups) {
+  use a <- decode.field(1, protobin.decode_uint())
+  use b <- decode.field(3, protobin.decode_bool())
+  use c <- decode.field(4, protobin.decode_string())
+  use d <- decode.field(5, protobin.decode_uint())
+  decode.success(IgnoresGroups(a:, b:, c:, d:))
+}
+
+pub fn ignore_groups_test() {
+  let path = "./test/ignores-groups.pb"
+  let assert Ok(bits) = file.read_bits(from: path)
+  let assert Ok(ignores_groups) =
+    parse(from: bits, using: ignores_groups_decoder())
+
+  assert ignores_groups
+    == Parsed(
+      value: IgnoresGroups(a: 42, b: False, c: "hi", d: 22),
+      rest: <<>>,
+      pos: 16,
+    )
+}

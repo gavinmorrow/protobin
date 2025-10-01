@@ -4,6 +4,10 @@ Decode the protobuf wire format using gleam `Decoder`s!
 
 There is currently no support for encoding the protobuf wire format.
 
+Groups (`SGROUP` and `EGROUP`) are not supported. If encountered, they are
+ignored and treated as regular fields. Any fields nested within them will be
+treated as if they were not nested.
+
 
 [![Package Version](https://img.shields.io/hexpm/v/protobin)](https://hex.pm/packages/protobin)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/protobin/)

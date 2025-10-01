@@ -131,6 +131,7 @@ fn wire_type_read_fn(ty: WireType) -> ValueParser {
     wire_type.I64 -> read_fixed(64)
     wire_type.Len -> read_len
     wire_type.I32 -> read_fixed(32)
+    wire_type.SGroup | wire_type.EGroup -> read_group
   }
 }
 
@@ -216,6 +217,11 @@ fn read_len(bits: BitArray, len_pos: BytePos) -> ValueResult {
     bit_array.slice(from: bits, at: len, take: bit_array.byte_size(bits) - len)
 
   Ok(Parsed(value:, rest:, pos: pos + len))
+}
+
+/// Currently just does nothing.
+fn read_group(bits: BitArray, pos: BytePos) -> ValueResult {
+  Ok(Parsed(value: <<>>, rest: bits, pos: pos))
 }
 
 /// Decode a repeated field that may be either packed or expanded.
