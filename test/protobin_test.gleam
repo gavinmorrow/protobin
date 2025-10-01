@@ -1,9 +1,10 @@
 import gleam/dynamic/decode.{type Decoder}
 import gleam/option
 import gleeunit
+import protobin/internal/wire_type
 import simplifile as file
 
-import protobin.{Parsed, parse, read_fixed, read_varint}
+import protobin.{Parsed, parse, parse_with_config, read_fixed, read_varint}
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -267,7 +268,11 @@ pub fn ignore_groups_test() {
   let path = "./test/ignores-groups.pb"
   let assert Ok(bits) = file.read_bits(from: path)
   let assert Ok(ignores_groups) =
-    parse(from: bits, using: ignores_groups_decoder())
+    parse_with_config(
+      from: bits,
+      using: ignores_groups_decoder(),
+      config: protobin.Config(ignore_groups: True),
+    )
 
   assert ignores_groups
     == Parsed(
@@ -275,4 +280,12 @@ pub fn ignore_groups_test() {
       rest: <<>>,
       pos: 16,
     )
+}
+
+pub fn does_not_ignore_groups_test() {
+  let path = "./test/ignores-groups.pb"
+  let assert Ok(bits) = file.read_bits(from: path)
+  let assert Error(err) = parse(from: bits, using: ignores_groups_decoder())
+
+  assert err == protobin.UnexpectedGroup(wire_type: wire_type.SGroup, pos: 2)
 }

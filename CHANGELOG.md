@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Make parsing configurable, with `parse_with_config()` and `Config`.
+  - Allow ignoring groups instead of always failing.
+
 ### Changed
 
-- Instead of failing to decode, any fields with a type of `SGROUP` or `EGROUP`
-  are ignored. Any nested fields are treated as if they were not nested.
+- Groups now result in an `UnexpectedGroup` error instead of `UnknownWireType`.
 
 ## v1.1.0 - 2025-10-01
 

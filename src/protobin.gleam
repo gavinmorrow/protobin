@@ -19,6 +19,7 @@ pub type ParseError {
   InvalidFixed(size: Int, bits: BitArray, pos: BytePos)
   InvalidLen(len: Int, value_bits: BitArray, pos: BytePos)
   UnableToDecode(List(decode.DecodeError))
+  UnexpectedGroup(wire_type: WireType, pos: BytePos)
 }
 
 pub type DecodeResult(t) =
@@ -43,11 +44,37 @@ pub type ValueResult =
 pub type ValueParser =
   fn(BitArray, BytePos) -> ValueResult
 
+pub type Config {
+  Config(
+    /// Whether or not to ignore groups and allow parsing to succeed if one is
+    /// encountered. If ignored, all nested fields will be treated as if they
+    /// were not nested.
+    ///
+    /// Defaults to `False`.
+    ignore_groups: Bool,
+  )
+}
+
+const config_default = Config(ignore_groups: False)
+
 pub fn parse(
   from bits: BitArray,
   using decoder: Decoder(t),
 ) -> DecodeResult(Parsed(t)) {
-  use Parsed(value: data, rest:, pos:) <- result.try(read_fields(bits, [], 0))
+  parse_with_config(from: bits, using: decoder, config: config_default)
+}
+
+pub fn parse_with_config(
+  from bits: BitArray,
+  using decoder: Decoder(t),
+  config config: Config,
+) -> DecodeResult(Parsed(t)) {
+  use Parsed(value: data, rest:, pos:) <- result.try(read_fields(
+    bits,
+    [],
+    0,
+    config,
+  ))
   decode.run(data, decoder)
   |> result.map(fn(value) { Parsed(value:, rest:, pos:) })
   |> result.map_error(UnableToDecode)
@@ -57,6 +84,7 @@ fn read_fields(
   bits: BitArray,
   acc: List(Field),
   pos: BytePos,
+  config: Config,
 ) -> DecodeResult(Parsed(Dynamic)) {
   case bits {
     <<>> ->
@@ -70,8 +98,9 @@ fn read_fields(
       use Parsed(value: prop, rest: bits, pos:) <- result.try(read_field(
         bits,
         pos,
+        config,
       ))
-      read_fields(bits, [prop, ..acc], pos)
+      read_fields(bits, [prop, ..acc], pos, config)
     }
   }
 }
@@ -99,7 +128,11 @@ fn repeated_to_list(reversed_fields: List(Field)) -> dict.Dict(Dynamic, Dynamic)
   dict.map_values(in: fields, with: fn(_key, field) { field |> dynamic.list })
 }
 
-fn read_field(bits: BitArray, tag_pos: BytePos) -> DecodeResult(Parsed(Field)) {
+fn read_field(
+  bits: BitArray,
+  tag_pos: BytePos,
+  config: Config,
+) -> DecodeResult(Parsed(Field)) {
   use Parsed(value: tag, rest: bits, pos:) <- result.try(parse_varint(
     bits,
     tag_pos,
@@ -113,6 +146,16 @@ fn read_field(bits: BitArray, tag_pos: BytePos) -> DecodeResult(Parsed(Field)) {
     wire_type.parse(wire_type),
     UnknownWireType(wire_type, pos: tag_pos),
   ))
+
+  // Fail when groups are found
+  use wire_type <- result.try({
+    case wire_type, config {
+      wire_type.SGroup, Config(ignore_groups: False)
+      | wire_type.EGroup, Config(ignore_groups: False)
+      -> Error(UnexpectedGroup(wire_type:, pos: tag_pos))
+      _, _ -> Ok(wire_type)
+    }
+  })
 
   let read = wire_type_read_fn(wire_type)
   use value: Parsed(Dynamic) <- result.try(
