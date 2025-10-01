@@ -329,6 +329,15 @@ pub fn decode_fixed(size: Int) -> Decoder(Int) {
   }
 }
 
+pub fn decode_bool() -> Decoder(Bool) {
+  use bool <- decode.then(decode_uint())
+  case bool {
+    0 -> False |> decode.success
+    1 -> True |> decode.success
+    _ -> decode.failure(False, "Bool")
+  }
+}
+
 pub fn decode_string() -> Decoder(String) {
   use bits <- decode.then(single_or_raw_bit_array())
 

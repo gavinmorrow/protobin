@@ -17,6 +17,7 @@ type Person {
     score: Int,
     self: option.Option(Person),
     day: Int,
+    likes_chocolate: Bool,
   )
 }
 
@@ -27,6 +28,7 @@ const default_person = Person(
   score: 0,
   self: option.None,
   day: 0,
+  likes_chocolate: False,
 )
 
 fn person_decoder() -> Decoder(Person) {
@@ -47,8 +49,10 @@ fn person_decoder() -> Decoder(Person) {
     decode.optional(person_inner_decoder),
   )
   use day <- decode.field(5, protobin.decode_fixed(32))
+  use likes_chocolate <- decode.field(7, protobin.decode_bool())
 
-  Person(id:, name:, age:, score:, self: person, day:) |> decode.success
+  Person(id:, name:, age:, score:, self: person, day:, likes_chocolate:)
+  |> decode.success
 }
 
 pub fn person_pb_test() {
@@ -71,8 +75,10 @@ pub fn person_pb_test() {
         score: 81_050,
         self: option.None,
         day: 22,
+        likes_chocolate: True,
       )),
       day: 22,
+      likes_chocolate: True,
     )
 }
 
