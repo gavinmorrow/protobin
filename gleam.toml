@@ -1,5 +1,5 @@
 name = "protobin"
-version = "1.1.0"
+version = "2.0.0"
 
 description = "Decode the protobuf wire format."
 licences = ["Apache-2.0"]
