@@ -12,7 +12,7 @@ one is encountered. See `Config.ignore_groups` for more information.
 
 
 ```sh
-gleam add protobin@1
+gleam add protobin@2
 ```
 
 ```gleam
