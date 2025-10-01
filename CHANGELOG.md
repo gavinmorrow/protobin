@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Instead of failing to decode, any fields with a type of `SGROUP` or `EGROUP`
+  are ignored. Any nested fields are treated as if they were not nested.
+
 ## v1.1.0 - 2025-10-01
 
 ### Added
