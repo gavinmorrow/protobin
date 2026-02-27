@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Decoder for bytes (`decode_bytes()`). Thanks to [@eaon] in [#1]!
+
+[@eaon]: https://github.com/eaon
+[#1]: https://github.com/gavinmorrow/protobin/pull/1
+
 ## v2.0.0 - 2025-10-01
 
 ### Added
