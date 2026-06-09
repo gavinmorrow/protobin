@@ -105,7 +105,9 @@ fn read_fields(
   }
 }
 
-fn repeated_to_list(reversed_fields: List(Field)) -> dict.Dict(Dynamic, Dynamic) {
+fn repeated_to_list(
+  reversed_fields: List(Field),
+) -> dict.Dict(Dynamic, Dynamic) {
   let fields = {
     // Every field is a list of values for two reasons:
     // a) expanded repeated values are encoded as repeated fields
@@ -213,7 +215,11 @@ pub fn parse_varint(bits: BitArray, pos: BytePos) -> ValueResult {
   parse_varint_acc(bits, <<>>, pos)
 }
 
-fn parse_varint_acc(bits: BitArray, acc: BitArray, pos: BytePos) -> ValueResult {
+fn parse_varint_acc(
+  bits: BitArray,
+  acc: BitArray,
+  pos: BytePos,
+) -> ValueResult {
   case bits {
     <<0:size(1), n:bits-size(7), rest:bytes>> -> {
       let acc = bit_array.concat([n, acc])
@@ -268,7 +274,7 @@ fn read_group(bits: BitArray, pos: BytePos) -> ValueResult {
 }
 
 /// Decode a repeated field that may be either packed or expanded.
-/// 
+///
 /// If it is impossible for a field to be packed (ie because it is encoded as
 /// a `LEN`) and therefore there is no `ValueParser` for it, then use the
 /// stdlib's `decode.list()` instead.
@@ -377,6 +383,15 @@ pub fn decode_uint() -> Decoder(Int) {
     _ -> decode.failure(<<>>, "uint")
   })
   bits |> util.bit_array_to_uint |> decode.success
+}
+
+pub fn decode_sint() -> Decoder(Int) {
+  use n <- decode.then(decode_uint())
+  case int.is_even(n) {
+    True -> n / 2
+    False -> int.negate({ n + 1 } / 2)
+  }
+  |> decode.success
 }
 
 pub fn decode_fixed(size: Int) -> Decoder(Int) {

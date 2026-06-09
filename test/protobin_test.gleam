@@ -112,6 +112,29 @@ pub fn two_ints_test() {
   assert data == Test(id: 150, age: 80_150)
 }
 
+fn two_sints_decoder() -> Decoder(TwoInts) {
+  use id <- decode.field(1, protobin.decode_sint())
+  use age <- decode.field(2, protobin.decode_sint())
+
+  Test(id:, age:) |> decode.success
+}
+
+pub fn two_sints_test() {
+  let bits = <<
+    // field 1
+    0x08,
+    0x01,
+    // field 2
+    0x10,
+    0x96,
+    0x01,
+  >>
+
+  let assert Ok(Parsed(value: data, rest: <<>>, pos: 5)) =
+    parse(from: bits, using: two_sints_decoder())
+  assert data == Test(id: -1, age: 75)
+}
+
 pub type FeedHeader {
   FeedHeader(gtfs_realtime_version: String, timestamp: Int, nyct: NyctHeader)
 }
