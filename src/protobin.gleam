@@ -379,6 +379,15 @@ pub fn decode_uint() -> Decoder(Int) {
   bits |> util.bit_array_to_uint |> decode.success
 }
 
+pub fn decode_sint() -> Decoder(Int) {
+  use n <- decode.then(decode_uint())
+  case int.is_even(n) {
+    True -> n / 2
+    False -> int.negate({ n + 1 } / 2)
+  }
+  |> decode.success
+}
+
 pub fn decode_fixed(size: Int) -> Decoder(Int) {
   use bits <- decode.then(single_or_raw_bit_array())
   case bits {
