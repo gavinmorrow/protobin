@@ -105,7 +105,9 @@ fn read_fields(
   }
 }
 
-fn repeated_to_list(reversed_fields: List(Field)) -> dict.Dict(Dynamic, Dynamic) {
+fn repeated_to_list(
+  reversed_fields: List(Field),
+) -> dict.Dict(Dynamic, Dynamic) {
   let fields = {
     // Every field is a list of values for two reasons:
     // a) expanded repeated values are encoded as repeated fields
@@ -213,7 +215,11 @@ pub fn parse_varint(bits: BitArray, pos: BytePos) -> ValueResult {
   parse_varint_acc(bits, <<>>, pos)
 }
 
-fn parse_varint_acc(bits: BitArray, acc: BitArray, pos: BytePos) -> ValueResult {
+fn parse_varint_acc(
+  bits: BitArray,
+  acc: BitArray,
+  pos: BytePos,
+) -> ValueResult {
   case bits {
     <<0:size(1), n:bits-size(7), rest:bytes>> -> {
       let acc = bit_array.concat([n, acc])
