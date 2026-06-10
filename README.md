@@ -8,7 +8,7 @@ Groups (`SGROUP` and `EGROUP`) are not supported. By default, parsing fails if
 one is encountered. See `Config.ignore_groups` for more information.
 
 [![Package Version](https://img.shields.io/hexpm/v/protobin)](https://hex.pm/packages/protobin)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/protobin/)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://protobin.hexdocs.pm/)
 
 
 ```sh
