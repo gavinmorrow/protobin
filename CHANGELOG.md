@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## v2.2.0 - 2026-06-10
+
 - Decoder for sints (`decode_sint()`). Thanks to [@eaon] in [#2]!
 
 [@eaon]: https://github.com/eaon
